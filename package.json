@@ -4,10 +4,11 @@
   "private": true,
   "description": "OGH content platform monorepo with React frontend and PocketBase backend",
   "scripts": {
-    "dev": "concurrently --kill-others --raw \"npm run dev --prefix apps/web\" \"npm run dev --prefix apps/pocketbase\"",
+    "dev": "concurrently --kill-others --raw \"npm run dev --prefix apps/web\" \"npm run dev --prefix apps/pocketbase\" \"npm run dev --prefix apps/admin-api\"",
     "build": "concurrently --raw \"npm run build --prefix apps/web\"",
-    "start": "concurrently --kill-others --raw \"npm run start --prefix apps/pocketbase\"",
-    "lint": "concurrently --raw \"npm run lint --prefix apps/web\""
+    "start": "concurrently --kill-others --raw \"npm run start --prefix apps/pocketbase\" \"npm run start --prefix apps/admin-api\"",
+    "lint": "concurrently --raw \"npm run lint --prefix apps/web\"",
+    "admin:api": "npm run dev --prefix apps/admin-api"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

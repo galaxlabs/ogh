@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = env("DATABASE_PROVIDER")
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  excerpt     String?
+  content     String
+  status      String   @default("draft")
+  author      String?
+  category    String?
+  tags        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Download {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?
+  fileUrl     String?
+  externalUrl String?
+  format      String?
+  status      String   @default("draft")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BackupSnapshot {
+  id          String   @id @default(cuid())
+  fileName    String
+  provider    String
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+model AdminLog {
+  id          String   @id @default(cuid())
+  level       String
+  message     String
+  context     String?
+  createdAt   DateTime @default(now())
+}

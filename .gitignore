@@ -25,8 +25,12 @@ pnpm-debug.log*
 
 # PocketBase runtime data
 apps/pocketbase/pb_data/
+apps/pocketbase/pb_data_dev/
 apps/pocketbase/pb_public/
 apps/pocketbase/pb_hooks/*.pb.js.map
+
+# Admin API runtime data
+apps/admin-api/runtime/
 
 # local archives / binaries
 app.tar.gz

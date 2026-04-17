@@ -22,14 +22,15 @@ A publish-ready monorepo for a content-driven web platform using a WordPress-lik
 - `apps/web` — user-facing website
 - `apps/pocketbase` — backend, auth, content storage, and admin data
 
-## Admin dashboard
+## CMS admin features
 
-The project now includes a lightweight CMS admin area at /admin for:
+This repository now includes:
 
-- signing in with an admins or PocketBase superuser account
-- creating and reviewing posts
-- creating and reviewing downloadable resources
-- operating the site like a WordPress-style content hub
+- a real admin dashboard at /admin
+- post and download management tools
+- backup and restore actions from the dashboard panel
+- console status and error logs
+- Prisma-ready database support for PostgreSQL and MySQL
 
 ## Notes for GitHub
 

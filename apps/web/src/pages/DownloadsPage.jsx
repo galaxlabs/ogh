@@ -58,8 +58,8 @@ function DownloadsPage() {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </a>
-                <Link to="/admin">
-                  <Button size="lg" variant="outline">Open Admin Dashboard</Button>
+                <Link to="/articles">
+                  <Button size="lg" variant="outline">Browse Articles</Button>
                 </Link>
               </div>
             </div>
