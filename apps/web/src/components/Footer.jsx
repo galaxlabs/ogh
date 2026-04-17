@@ -20,6 +20,7 @@ function Footer({ translations }) {
     company: [
       { label: translations.nav.about, path: '/about' },
       { label: translations.nav.contact, path: '/contact' },
+      { label: translations.nav.admin, path: '/admin' },
     ],
     legal: [
       { label: 'Privacy Policy', path: '/privacy' },

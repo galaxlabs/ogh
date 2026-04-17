@@ -22,6 +22,7 @@ function Header({ currentLanguage, onLanguageChange, translations }) {
     { label: translations.nav.science, path: '/science' },
     { label: translations.nav.technology, path: '/technology' },
     { label: translations.nav.openSource, path: '/open-source' },
+    { label: translations.nav.admin, path: '/admin' },
     { label: translations.nav.about, path: '/about' },
     { label: translations.nav.contact, path: '/contact' },
   ];

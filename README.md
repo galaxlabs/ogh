@@ -22,6 +22,15 @@ A publish-ready monorepo for a content-driven web platform using a WordPress-lik
 - `apps/web` — user-facing website
 - `apps/pocketbase` — backend, auth, content storage, and admin data
 
+## Admin dashboard
+
+The project now includes a lightweight CMS admin area at /admin for:
+
+- signing in with an admins or PocketBase superuser account
+- creating and reviewing posts
+- creating and reviewing downloadable resources
+- operating the site like a WordPress-style content hub
+
 ## Notes for GitHub
 
 This repository is prepared for GitHub with:
