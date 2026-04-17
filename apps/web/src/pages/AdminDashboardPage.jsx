@@ -168,6 +168,7 @@ function AdminDashboardPage() {
       <Helmet>
         <title>Restricted Area</title>
         <meta name="description" content="Restricted internal operations page." />
+        <meta name="robots" content="noindex,nofollow,noarchive" />
       </Helmet>
 
       <div className="min-h-screen flex flex-col">
