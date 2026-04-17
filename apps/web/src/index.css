@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 216 28% 17%;
+    --card: 0 0% 100%;
+    --card-foreground: 216 28% 17%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 28% 17%;
+    --primary: 200 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 60%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 13% 95%;
+    --muted-foreground: 216 12% 45%;
+    --accent: 200 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 200 100% 50%;
+    --radius: 0.5rem;
+    
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 200 100% 50%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 200 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 60%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 200 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 200 100% 50%;
+    
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 200 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 200 100% 50%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow-x: clip;
+    line-height: 1.625;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    text-wrap: balance;
+    line-height: 1.2;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl font-bold;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl font-bold;
+    letter-spacing: -0.015em;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl font-semibold;
+  }
+
+  h4 {
+    @apply text-xl md:text-2xl font-semibold;
+  }
+
+  h5 {
+    @apply text-lg md:text-xl font-medium;
+  }
+
+  h6 {
+    @apply text-base md:text-lg font-medium;
+  }
+
+  p {
+    @apply text-base leading-relaxed max-w-prose;
+  }
+
+  code {
+    @apply font-mono text-sm bg-muted px-1.5 py-0.5 rounded;
+  }
+
+  pre {
+    @apply bg-muted p-4 rounded-lg overflow-x-auto;
+  }
+
+  blockquote {
+    @apply border-l-4 border-primary pl-4 italic;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
