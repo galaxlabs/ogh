@@ -4,8 +4,8 @@
 	"version": "0.0.0",
 	"private": true,
 	"scripts": {
-		"dev": "mkdir -p ./pb_data_dev && chmod +x ./pocketbase && ./pocketbase serve --http=0.0.0.0:8090 --encryptionEnv=PB_ENCRYPTION_KEY --dir=./pb_data_dev --migrationsDir=./pb_migrations --hooksDir=./pb_hooks --hooksWatch=false",
-		"start": "chmod +x ./pocketbase && ./pocketbase serve --http=0.0.0.0:8090 --encryptionEnv=PB_ENCRYPTION_KEY --dir=/data --migrationsDir=./pb_migrations --hooksDir=./pb_hooks --hooksWatch=false",
+		"dev": "sh -ac 'set -a; [ -f ../../.env ] && . ../../.env; set +a; mkdir -p ./pb_data_dev && chmod +x ./pocketbase && ./pocketbase serve --http=0.0.0.0:8090 --encryptionEnv=PB_ENCRYPTION_KEY --dir=./pb_data_dev --migrationsDir=./pb_migrations --hooksDir=./pb_hooks --hooksWatch=false'",
+		"start": "sh -ac 'set -a; [ -f ../../.env ] && . ../../.env; set +a; chmod +x ./pocketbase && ./pocketbase serve --http=0.0.0.0:8090 --encryptionEnv=PB_ENCRYPTION_KEY --dir=/data --migrationsDir=./pb_migrations --hooksDir=./pb_hooks --hooksWatch=false'",
 		"migrations:up": "./pocketbase horizons migrations:up --encryptionEnv=PB_ENCRYPTION_KEY --dir=/data --migrationsDir=./pb_migrations --hooksDir=./pb_hooks --hooksWatch=false",
 		"migrations:revert": "./pocketbase horizons migrations:revert --encryptionEnv=PB_ENCRYPTION_KEY --dir=/data --migrationsDir=./pb_migrations --hooksDir=./pb_hooks --hooksWatch=false",
 		"migrations:snapshot": "mkdir -p ./pb_snapshots && echo 'y' | ./pocketbase migrate collections --encryptionEnv=PB_ENCRYPTION_KEY --dir=/data --migrationsDir=./pb_snapshots",

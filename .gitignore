@@ -41,3 +41,11 @@ app.tar.gz
 # temp files
 *.tmp
 *.swp
+
+# local docs not for GitHub
+*.md
+!.env.example
+
+# local project database
+.pgdata/
+.pgrun/

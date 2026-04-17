@@ -1,8 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { PrismaClient } from '@prisma/client';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,14 +22,22 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 const sessions = new Map();
+const loginAttempts = new Map();
 
 const serviceState = {
   startedAt: new Date().toISOString(),
   dbProvider: process.env.DATABASE_PROVIDER || 'postgresql',
-  databaseUrl: process.env.DATABASE_URL || 'postgresql://dbuser:dbpass@localhost:5432/ogh_admin',
-  mysqlUrl: process.env.MYSQL_DATABASE_URL || 'mysql://dbuser:dbpass@localhost:3306/ogh_admin',
+  databaseUrl: process.env.DATABASE_URL || '',
+  mysqlUrl: process.env.MYSQL_DATABASE_URL || '',
   adminEmail: process.env.ADMIN_EMAIL || '',
   adminPassword: process.env.ADMIN_PASSWORD || '',
+};
+
+const prisma = serviceState.databaseUrl ? new PrismaClient() : null;
+let prismaState = {
+  configured: Boolean(serviceState.databaseUrl),
+  connected: false,
+  message: serviceState.databaseUrl ? 'Pending connection test' : 'DATABASE_URL not configured',
 };
 
 function log(level, message, meta = {}) {
@@ -42,9 +52,63 @@ function log(level, message, meta = {}) {
   return entry;
 }
 
+async function verifyPrismaConnection() {
+  if (!prisma) {
+    prismaState = {
+      configured: false,
+      connected: false,
+      message: 'DATABASE_URL not configured',
+    };
+    return prismaState;
+  }
+
+  try {
+    await prisma.$connect();
+    await prisma.$queryRaw`SELECT 1`;
+    prismaState = {
+      configured: true,
+      connected: true,
+      message: `Connected to ${serviceState.dbProvider}`,
+    };
+    log('info', 'Prisma database connection established', { provider: serviceState.dbProvider });
+  } catch (error) {
+    prismaState = {
+      configured: true,
+      connected: false,
+      message: `Database connection failed: ${error.message}`,
+    };
+    log('warn', 'Prisma database connection failed', { provider: serviceState.dbProvider, error: error.message });
+  }
+
+  return prismaState;
+}
+
 function readToken(req) {
   const header = req.headers.authorization || '';
   return header.startsWith('Bearer ') ? header.slice(7) : '';
+}
+
+function checkRateLimit(email) {
+  const now = Date.now();
+  const record = loginAttempts.get(email) || { count: 0, firstAttemptAt: now };
+
+  if (now - record.firstAttemptAt > 15 * 60 * 1000) {
+    loginAttempts.set(email, { count: 0, firstAttemptAt: now });
+    return false;
+  }
+
+  return record.count >= 5;
+}
+
+function registerFailedAttempt(email) {
+  const now = Date.now();
+  const record = loginAttempts.get(email) || { count: 0, firstAttemptAt: now };
+  if (now - record.firstAttemptAt > 15 * 60 * 1000) {
+    loginAttempts.set(email, { count: 1, firstAttemptAt: now });
+    return;
+  }
+  record.count += 1;
+  loginAttempts.set(email, record);
 }
 
 function requireAuth(req, res, next) {
@@ -63,6 +127,7 @@ app.get('/health', (req, res) => {
     uptimeSeconds: Math.round(process.uptime()),
     startedAt: serviceState.startedAt,
     dbProvider: serviceState.dbProvider,
+    database: prismaState,
   };
   log('info', 'Health check requested', health);
   res.json(health);
@@ -71,15 +136,23 @@ app.get('/health', (req, res) => {
 app.post('/api/auth/login', (req, res) => {
   const { email = '', password = '' } = req.body || {};
 
+  if (checkRateLimit(email)) {
+    log('warn', 'Blocked admin login attempt due to rate limit', { email });
+    return res.status(429).json({ ok: false, message: 'Too many failed attempts. Try again later.' });
+  }
+
   if (!serviceState.adminEmail || !serviceState.adminPassword) {
     log('warn', 'Admin auth requested before credentials were configured');
     return res.status(503).json({ ok: false, message: 'Admin credentials are not configured on the server' });
   }
 
   if (email !== serviceState.adminEmail || password !== serviceState.adminPassword) {
+    registerFailedAttempt(email);
     log('warn', 'Failed admin login attempt', { email });
     return res.status(401).json({ ok: false, message: 'Invalid credentials' });
   }
+
+  loginAttempts.delete(email);
 
   const token = crypto.randomUUID();
   const session = { email, createdAt: new Date().toISOString() };
@@ -149,6 +222,7 @@ app.post('/api/restore', requireAuth, (req, res) => {
   res.json({ ok: true, restoredAt: new Date().toISOString(), payload });
 });
 
-app.listen(port, () => {
-  log('info', `Admin API listening on port ${port}`, { port, dbProvider: serviceState.dbProvider });
+app.listen(port, async () => {
+  await verifyPrismaConnection();
+  log('info', `Admin API listening on port ${port}`, { port, dbProvider: serviceState.dbProvider, database: prismaState.message });
 });
