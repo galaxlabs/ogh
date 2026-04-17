@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +12,6 @@ import Footer from '@/components/Footer.jsx';
 import { getTranslation } from '@/data/i18n.js';
 import {
   seedAdminData,
-  getAdminCredentials,
   loginAdmin,
   logoutAdmin,
   isAdminAuthenticated,
@@ -44,7 +43,6 @@ function AdminDashboardPage() {
   const [postForm, setPostForm] = useState(emptyPost);
   const [downloadForm, setDownloadForm] = useState(emptyDownload);
   const translations = getTranslation(currentLanguage);
-  const credentials = useMemo(() => getAdminCredentials(), []);
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language') || 'en';
@@ -86,11 +84,11 @@ function AdminDashboardPage() {
     setServices(await getServiceStatus());
   }
 
-  function handleLogin(e) {
+  async function handleLogin(e) {
     e.preventDefault();
-    const ok = loginAdmin(email, password);
+    const ok = await loginAdmin(email, password);
     if (!ok) {
-      toast.error('Invalid admin credentials');
+      toast.error('Access denied');
       setLogs(getLogs());
       return;
     }
@@ -98,11 +96,11 @@ function AdminDashboardPage() {
     setEmail('');
     setPassword('');
     refreshDashboard();
-    toast.success('Admin login successful');
+    toast.success('Signed in');
   }
 
-  function handleLogout() {
-    logoutAdmin();
+  async function handleLogout() {
+    await logoutAdmin();
     setAuthenticated(false);
     refreshDashboard();
     toast.success('Logged out');
@@ -168,8 +166,8 @@ function AdminDashboardPage() {
   return (
     <>
       <Helmet>
-        <title>Admin Dashboard - OpenGuideHub</title>
-        <meta name="description" content="Manage posts, downloads, backups, and service status from the admin dashboard." />
+        <title>Restricted Area</title>
+        <meta name="description" content="Restricted internal operations page." />
       </Helmet>
 
       <div className="min-h-screen flex flex-col">
@@ -189,24 +187,18 @@ function AdminDashboardPage() {
                       <div className="inline-flex p-3 rounded-2xl bg-primary/10 mb-4">
                         <Shield className="h-8 w-8 text-primary" />
                       </div>
-                      <h1 className="text-3xl font-bold mb-2">Admin Dashboard Login</h1>
-                      <p className="text-muted-foreground">Use the development admin account to manage posts, downloads, backups, and logs.</p>
-                    </div>
-
-                    <div className="rounded-xl border bg-muted/30 p-4 text-sm">
-                      <div><strong>Admin email:</strong> {credentials.email}</div>
-                      <div><strong>Admin password:</strong> {credentials.password}</div>
-                      <div className="text-muted-foreground mt-2">Change these values in the environment before production use.</div>
+                      <h1 className="text-3xl font-bold mb-2">Restricted Area</h1>
+                      <p className="text-muted-foreground">Authorized operators only.</p>
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="admin-email">Email</Label>
-                        <Input id="admin-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={credentials.email} />
+                        <Input id="admin-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" autoComplete="username" />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="admin-password">Password</Label>
-                        <Input id="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your admin password" />
+                        <Input id="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" autoComplete="current-password" />
                       </div>
                       <Button type="submit" className="w-full">Sign In</Button>
                     </form>

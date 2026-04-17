@@ -120,7 +120,9 @@ function generateFallbackUrl(fileName) {
 }
 
 function generateLlmsTxt(pages) {
-	const sortedPages = pages.sort((a, b) => a.title.localeCompare(b.title));
+	const sortedPages = pages
+		.filter(page => !['/admin', '/internal', '/secure-console'].includes(page.url) && !/admin|restricted/i.test(page.title))
+		.sort((a, b) => a.title.localeCompare(b.title));
 	const pageEntries = sortedPages.map(page =>
 		`- [${page.title}](${page.url}): ${page.description}`
 	).join('\n');

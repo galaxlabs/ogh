@@ -22,15 +22,9 @@ A publish-ready monorepo for a content-driven web platform using a WordPress-lik
 - `apps/web` — user-facing website
 - `apps/pocketbase` — backend, auth, content storage, and admin data
 
-## CMS admin features
+## Internal management features
 
-This repository now includes:
-
-- a real admin dashboard at /admin
-- post and download management tools
-- backup and restore actions from the dashboard panel
-- console status and error logs
-- Prisma-ready database support for PostgreSQL and MySQL
+This repository includes internal management tooling for content operations, backup workflows, logging, and Prisma-ready database support.
 
 ## Notes for GitHub
 

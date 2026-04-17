@@ -17,7 +17,6 @@ function Header({ currentLanguage, onLanguageChange, translations }) {
     { label: translations.nav.categories, path: '/categories' },
     { label: translations.nav.articles, path: '/articles' },
     { label: translations.nav.downloads, path: '/downloads' },
-    { label: translations.nav.admin, path: '/admin' },
     { label: translations.nav.tutorials, path: '/tutorials' },
     { label: translations.nav.reviews, path: '/reviews' },
     { label: translations.nav.science, path: '/science' },
@@ -42,7 +41,7 @@ function Header({ currentLanguage, onLanguageChange, translations }) {
             </Link>
 
             <nav className="hidden lg:flex items-center gap-1">
-              {navigationItems.slice(0, 6).map((item) => (
+              {navigationItems.slice(0, 5).map((item) => (
                 <Link key={item.path} to={item.path}>
                   <Button
                     variant="ghost"

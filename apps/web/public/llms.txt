@@ -1,7 +1,6 @@
 ## Pages
 - [- OpenGuideHub`}](/articledetail): No description available
 - [`}](/home): No description available
-- [Admin Dashboard - OpenGuideHub](/admindashboard): Manage posts, downloads, backups, and service status from the admin dashboard.
 - [Downloads | OpenGuideHub](/downloads): Download templates, guides, and CMS starter resources from OpenGuideHub.
 - [Untitled Page](/about): Learn about OpenGuideHub
 - [Untitled Page](/articles): Browse all articles and guides on OpenGuideHub

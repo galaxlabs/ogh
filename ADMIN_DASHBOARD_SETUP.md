@@ -1,17 +1,8 @@
-# Admin Dashboard Setup
+# Internal Operations Setup
 
-## Access
+Internal access details are intentionally not exposed in public documentation.
 
-Open the admin panel at:
-
-- /admin
-
-Default local development credentials:
-
-- Email: admin@openguidehub.local
-- Password: Admin@12345
-
-Change them in the environment before any production deployment.
+Configure administrator credentials only through local or server environment variables before deployment.
 
 ## Features
 

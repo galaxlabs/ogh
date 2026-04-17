@@ -9,15 +9,8 @@ const STORAGE_KEYS = {
   backups: 'ogh_admin_backups',
 };
 
-const DEV_CREDENTIALS = {
-  email: import.meta.env.VITE_ADMIN_EMAIL || 'admin@openguidehub.local',
-  password: import.meta.env.VITE_ADMIN_PASSWORD || 'Admin@12345',
-};
-
 const ADMIN_API_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:3100';
 const DB_PROVIDER = import.meta.env.VITE_DATABASE_PROVIDER || 'postgresql';
-const DB_URL = import.meta.env.VITE_DATABASE_URL || 'postgresql://user:password@localhost:5432/ogh_admin';
-const MYSQL_URL = import.meta.env.VITE_MYSQL_DATABASE_URL || 'mysql://user:password@localhost:3306/ogh_admin';
 
 function read(key, fallback) {
   try {
@@ -63,28 +56,62 @@ export function seedAdminData() {
   }
 }
 
-export function getAdminCredentials() {
-  return DEV_CREDENTIALS;
+function getAuthSession() {
+  return read(STORAGE_KEYS.auth, null);
 }
 
-export function loginAdmin(email, password) {
-  const ok = email === DEV_CREDENTIALS.email && password === DEV_CREDENTIALS.password;
-  if (ok) {
-    write(STORAGE_KEYS.auth, { email, loggedInAt: new Date().toISOString() });
+function getAuthHeaders() {
+  const session = getAuthSession();
+  return session?.token
+    ? { Authorization: `Bearer ${session.token}` }
+    : {};
+}
+
+export async function loginAdmin(email, password) {
+  try {
+    const response = await fetch(`${ADMIN_API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      appendLog('error', 'Failed admin login attempt');
+      return false;
+    }
+
+    const data = await response.json();
+    write(STORAGE_KEYS.auth, {
+      email: data.email,
+      token: data.token,
+      loggedInAt: new Date().toISOString(),
+    });
     appendLog('info', 'Admin login successful');
     return true;
+  } catch {
+    appendLog('error', 'Admin API login request failed');
+    return false;
   }
-  appendLog('error', 'Failed admin login attempt');
-  return false;
 }
 
-export function logoutAdmin() {
+export async function logoutAdmin() {
+  const headers = getAuthHeaders();
   localStorage.removeItem(STORAGE_KEYS.auth);
+
+  try {
+    await fetch(`${ADMIN_API_URL}/api/auth/logout`, {
+      method: 'POST',
+      headers,
+    });
+  } catch {
+    // ignore logout transport errors
+  }
+
   appendLog('info', 'Admin logged out');
 }
 
 export function isAdminAuthenticated() {
-  return Boolean(read(STORAGE_KEYS.auth, null));
+  return Boolean(getAuthSession()?.token);
 }
 
 export function getPosts() {
@@ -160,7 +187,7 @@ export function appendLog(level, message, meta = {}) {
 
   fetch(`${ADMIN_API_URL}/api/logs`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(entry),
   }).catch(() => null);
 
@@ -173,20 +200,37 @@ export function getLogs() {
 
 export async function getServiceStatus() {
   let apiStatus = 'offline';
+  let services = [];
+  let databases = [];
+
   try {
-    const response = await fetch(`${ADMIN_API_URL}/health`);
-    if (response.ok) {
+    const healthResponse = await fetch(`${ADMIN_API_URL}/health`);
+    if (healthResponse.ok) {
       apiStatus = 'running';
+    }
+
+    const protectedResponse = await fetch(`${ADMIN_API_URL}/api/status`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (protectedResponse.ok) {
+      const data = await protectedResponse.json();
+      services = data.services || [];
+      databases = data.databases || [];
     }
   } catch {
     apiStatus = 'offline';
   }
 
   return [
-    { name: 'Frontend UI', status: navigator.onLine ? 'running' : 'offline', details: 'React + Vite admin panel' },
-    { name: 'PocketBase CMS', status: import.meta.env.VITE_POCKETBASE_URL ? 'configured' : 'local', details: import.meta.env.VITE_POCKETBASE_URL || 'http://localhost:8090' },
-    { name: 'Admin API', status: apiStatus, details: ADMIN_API_URL },
-    { name: 'Prisma Database', status: 'ready', details: `${DB_PROVIDER} | ${DB_PROVIDER === 'mysql' ? MYSQL_URL : DB_URL}` },
+    ...(services.length ? services : [
+      { name: 'Frontend UI', status: navigator.onLine ? 'running' : 'offline', details: 'React + Vite interface' },
+      { name: 'PocketBase CMS', status: 'configured', details: import.meta.env.VITE_POCKETBASE_URL || 'http://localhost:8090' },
+      { name: 'Admin API', status: apiStatus, details: ADMIN_API_URL },
+    ]),
+    ...(databases.length ? databases.map((db) => ({ name: `${db.provider} database`, status: db.enabled ? 'active' : 'standby', details: db.url })) : [
+      { name: 'Prisma Database', status: 'ready', details: `${DB_PROVIDER} | server-managed connection` },
+    ]),
   ];
 }
 
@@ -198,7 +242,6 @@ export function createBackupPayload() {
     logs: getLogs(),
     config: {
       dbProvider: DB_PROVIDER,
-      adminEmail: DEV_CREDENTIALS.email,
     },
   };
   const backups = read(STORAGE_KEYS.backups, []);
@@ -208,7 +251,7 @@ export function createBackupPayload() {
 
   fetch(`${ADMIN_API_URL}/api/backup`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(payload),
   }).catch(() => null);
 
@@ -230,7 +273,7 @@ export function restoreBackupPayload(payload) {
 
   fetch(`${ADMIN_API_URL}/api/restore`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(payload),
   }).catch(() => null);
 }
