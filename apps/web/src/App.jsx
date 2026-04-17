@@ -12,6 +12,7 @@ import ReviewsPage from './pages/ReviewsPage.jsx';
 import SciencePage from './pages/SciencePage.jsx';
 import TechnologyPage from './pages/TechnologyPage.jsx';
 import OpenSourcePage from './pages/OpenSourcePage.jsx';
+import DownloadsPage from './pages/DownloadsPage.jsx';
 import AboutPage from './pages/AboutPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
@@ -32,6 +33,7 @@ function App() {
         <Route path="/science" element={<SciencePage />} />
         <Route path="/technology" element={<TechnologyPage />} />
         <Route path="/open-source" element={<OpenSourcePage />} />
+        <Route path="/downloads" element={<DownloadsPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />

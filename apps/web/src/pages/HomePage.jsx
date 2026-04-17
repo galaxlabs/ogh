@@ -245,6 +245,21 @@ function HomePage() {
             </div>
           </section>
 
+          <section className="py-20 bg-muted/30">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">WordPress-style downloadable CMS</h2>
+              <p className="text-muted-foreground mb-8 text-lg">
+                Manage articles, pages, categories, and downloadable files in one content workflow.
+              </p>
+              <Link to="/downloads">
+                <Button size="lg" className="gap-2">
+                  Explore Downloads
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </section>
+
           <section className="py-20 bg-gradient-to-br from-primary/10 to-secondary/10">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">{translations.home.newsletter}</h2>

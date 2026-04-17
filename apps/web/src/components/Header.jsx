@@ -16,6 +16,7 @@ function Header({ currentLanguage, onLanguageChange, translations }) {
     { label: translations.nav.home, path: '/' },
     { label: translations.nav.categories, path: '/categories' },
     { label: translations.nav.articles, path: '/articles' },
+    { label: translations.nav.downloads, path: '/downloads' },
     { label: translations.nav.tutorials, path: '/tutorials' },
     { label: translations.nav.reviews, path: '/reviews' },
     { label: translations.nav.science, path: '/science' },

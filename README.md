@@ -1,6 +1,6 @@
 # OGH Monorepo
 
-A publish-ready monorepo for a content-driven web platform using:
+A publish-ready monorepo for a content-driven web platform using a WordPress-like downloadable CMS style:
 
 - React + Vite frontend in `apps/web`
 - PocketBase backend in `apps/pocketbase`

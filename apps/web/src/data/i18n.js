@@ -5,6 +5,7 @@ export const translations = {
       home: 'Home',
       categories: 'Categories',
       articles: 'Articles',
+      downloads: 'Downloads',
       tutorials: 'Tutorials',
       reviews: 'Reviews',
       science: 'Science',
@@ -33,6 +34,7 @@ export const translations = {
       updated: 'Updated',
       share: 'Share',
       save: 'Save',
+      download: 'Download',
       backToHome: 'Back to Home',
     },
     home: {
@@ -89,6 +91,7 @@ export const translations = {
       home: 'ہوم',
       categories: 'زمرے',
       articles: 'مضامین',
+      downloads: 'ڈاؤن لوڈز',
       tutorials: 'سبق',
       reviews: 'جائزے',
       science: 'سائنس',
@@ -117,6 +120,7 @@ export const translations = {
       updated: 'اپ ڈیٹ',
       share: 'شیئر کریں',
       save: 'محفوظ کریں',
+      download: 'ڈاؤن لوڈ',
       backToHome: 'ہوم پر واپس',
     },
     home: {
@@ -173,6 +177,7 @@ export const translations = {
       home: 'الرئيسية',
       categories: 'الفئات',
       articles: 'المقالات',
+      downloads: 'التنزيلات',
       tutorials: 'الدروس',
       reviews: 'المراجعات',
       science: 'العلوم',
@@ -201,6 +206,7 @@ export const translations = {
       updated: 'تحديث',
       share: 'مشاركة',
       save: 'حفظ',
+      download: 'تنزيل',
       backToHome: 'العودة للرئيسية',
     },
     home: {
