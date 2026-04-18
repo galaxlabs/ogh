@@ -64,6 +64,20 @@ function HomePage() {
       return matchesLane && matchesQuery;
     })
     .slice(0, 4);
+  const spotlightRows = [
+    {
+      title: 'For AI builders',
+      items: allArticles.filter((article) => ['Artificial Intelligence', 'AI Tools', 'AI Agents'].includes(article.category)).slice(0, 3),
+    },
+    {
+      title: 'For learners',
+      items: allArticles.filter((article) => ['Tutorials', 'Programming', 'Science'].includes(article.category)).slice(0, 3),
+    },
+    {
+      title: 'Open source radar',
+      items: allArticles.filter((article) => ['FOSS Updates', 'Open Source', 'Technology'].includes(article.category)).slice(0, 3),
+    },
+  ];
   const googleSiteVerification = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION || '';
   const aiFocusAreas = [
     {
@@ -197,6 +211,33 @@ function HomePage() {
                     <ArticleCard key={article.id} article={article} index={index} />
                   ))}
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="py-12 bg-muted/20 border-b">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-end justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-2">Magazine briefing</h2>
+                  <p className="text-muted-foreground">Fast reading lanes for builders, learners, and open-source readers.</p>
+                </div>
+              </div>
+
+              <div className="grid lg:grid-cols-3 gap-6">
+                {spotlightRows.map((row) => (
+                  <div key={row.title} className="rounded-2xl border bg-background p-5">
+                    <h3 className="text-lg font-semibold mb-4">{row.title}</h3>
+                    <div className="space-y-4">
+                      {row.items.map((article) => (
+                        <Link key={article.id} to={`/articles/${article.slug}`} className="block group">
+                          <div className="text-sm font-medium group-hover:text-primary transition-colors line-clamp-2">{article.title}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{article.category} • {article.readingTime} min read</div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </section>

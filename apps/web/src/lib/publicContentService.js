@@ -22,22 +22,24 @@ function normalizeBase(base = '') {
 
 function getCandidateBases() {
   const configured = normalizeBase(import.meta.env.VITE_PUBLIC_CONTENT_API_URL || '');
+  const bases = [];
 
   if (configured) {
-    return [configured];
+    bases.push(configured);
   }
 
   if (typeof window !== 'undefined') {
     const { hostname, origin } = window.location;
+    bases.push(normalizeBase(origin));
 
     if (/localhost|127\.0\.0\.1/.test(hostname)) {
-      return [normalizeBase(origin), 'http://127.0.0.1:3100', ''];
+      bases.push('http://127.0.0.1:3100', '');
+    } else {
+      bases.push('https://api.openguidehub.org');
     }
-
-    return [];
   }
 
-  return [];
+  return [...new Set(bases.filter(Boolean))];
 }
 
 export function normalizePublicArticle(article) {

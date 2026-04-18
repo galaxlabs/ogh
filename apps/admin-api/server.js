@@ -219,15 +219,25 @@ const DEFAULT_CONTENT_CATEGORIES = [
   'Article',
 ];
 
+const EDITORIAL_AUTHOR_POOL = [
+  'OpenGuide Admin',
+  'OGH Editorial Desk',
+  'Knowledge Curator',
+  'Insight Writer',
+  'Guide Studio',
+];
+
 function buildFallbackExplanation(title = '', content = '', question = '') {
   const cleaned = String(content || '').replace(/\s+/g, ' ').trim();
-  const preview = cleaned.split(/(?<=[.!?])\s+/).slice(0, 3).join(' ');
+  const parts = cleaned.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const preview = parts.slice(0, 2).join(' ');
+  const takeaways = parts.slice(2, 5).map((line) => `- ${line}`).join('\n');
 
   if (question) {
-    return `This article is about ${title || 'the requested topic'}. Based on the locally available content, here is the most relevant explanation: ${preview}`;
+    return `## Simple explanation\n${preview || title || 'This topic is being prepared.'}\n\n## Key takeaways\n${takeaways || '- More details will appear here once the model responds.'}`;
   }
 
-  return `Quick overview: ${preview || String(title || 'This post is ready for AI explanation once the model is connected.')}`;
+  return `## TL;DR\n${preview || String(title || 'This post is ready for AI explanation once the model is connected.')}\n\n## Key takeaways\n${takeaways || '- Summary is currently limited in fallback mode.'}`;
 }
 
 function extractJsonObject(text = '') {
@@ -286,29 +296,45 @@ async function analyzeContentMetadata({ title = '', url = '', note = '', formatt
   }
 }
 
-async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE' }) {
+function pickEditorialAuthor(seed = '') {
+  const normalized = String(seed || 'OpenGuideHub');
+  const hash = crypto.createHash('sha1').update(normalized).digest('hex');
+  return EDITORIAL_AUTHOR_POOL[parseInt(hash.slice(0, 8), 16) % EDITORIAL_AUTHOR_POOL.length];
+}
+
+function buildStructuredFallbackContent({ title = '', url = '', note = '', formattedText = '', category = 'Article', sourceDomain = '' }) {
+  const baseText = String(formattedText || note || title).replace(/\s+/g, ' ').trim();
+  const sentences = baseText.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const tldr = sentences.slice(0, 2).join(' ').slice(0, 360) || title;
+  const bullets = sentences.slice(0, 3).map((line) => `- ${line.slice(0, 180)}`).join('\n');
+  const sourceLabel = sourceDomain || (url ? new URL(url).hostname.replace(/^www\./, '') : 'reference source');
   const sourceLine = url ? `\n\nRead full original article here: ${url}` : '';
+  return `## TL;DR\n${tldr}\n\n## Summary\n${bullets || '- This article has been archived and summarized for easier reading.'}\n\n## Why it matters\nThis post was reorganized for readability and reference by OpenGuideHub from ${sourceLabel}.${sourceLine}`.trim();
+}
+
+async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE', sourceDomain = '' }) {
+  const sourceLine = url ? `Read full original article here: ${url}` : '';
   const baseText = String(formattedText || [title, note].filter(Boolean).join('\n\n')).trim();
-  const fallback = `${baseText}${sourceLine}`.trim();
+  const fallback = buildStructuredFallbackContent({ title, url, note, formattedText: baseText, category, sourceDomain });
 
   if (!serviceState.aiRewriteOnPublish || !baseText) {
     return fallback;
   }
 
-  if (baseText.length > 4000) {
+  if (baseText.length > 7000) {
     return fallback;
   }
 
   try {
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: 'You are an SEO-friendly publishing editor. Rewrite the provided source into a concise, original summary for a knowledge website. Keep facts intact, do not fabricate details, and end with the exact source backlink line when provided.',
-        userPrompt: `Title: ${title}\nCategory: ${category}\nSource URL: ${url || 'N/A'}\n\nSource material:\n${baseText}\n\nFinish with: ${sourceLine.trim() || 'No backlink line needed.'}`,
-        temperature: 0.3,
-        maxTokens: 650,
+        systemPrompt: 'You are the OpenGuideHub editorial rewrite agent. Rewrite source material into an original magazine-style knowledge post. Use Markdown sections titled TL;DR, Summary, and Why it matters. Keep facts intact, avoid plagiarism, do not fabricate details, and keep the exact source attribution line at the end when a URL is provided.',
+        userPrompt: `Title: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\n\nSource material:\n${baseText}\n\nRequired ending line: ${sourceLine || 'No backlink line needed.'}`,
+        temperature: 0.35,
+        maxTokens: 900,
         model: serviceState.ollamaRewriterModel,
       }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('AI rewrite timeout')), 6000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('AI rewrite timeout')), 9000)),
     ]);
 
     return String(result.content || fallback).trim();
@@ -630,6 +656,9 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
       note = '',
       category = 'LINK',
       source_domain = '',
+      source_excerpt = '',
+      source_image = '',
+      author_name = '',
       formatted_text = '',
     } = req.body || {};
 
@@ -646,10 +675,13 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
     const normalizedContent = await buildPublishedArticleContent({
       title: normalizedTitle,
       url: normalizedUrl,
-      note: String(note || '').trim(),
-      formattedText: String(formatted_text || ''),
+      note: String(source_excerpt || note || '').trim(),
+      formattedText: String(formatted_text || source_excerpt || ''),
       category: metadata.category,
+      sourceDomain: String(source_domain || ''),
     });
+
+    const selectedAuthor = String(author_name || '').trim() || pickEditorialAuthor(`${normalizedTitle}|${normalizedUrl}`);
 
     if (!normalizedTitle && !normalizedUrl && !normalizedContent) {
       return res.status(400).json({ ok: false, message: 'Missing publish content' });
@@ -663,20 +695,20 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
       where: { slug },
       update: {
         title: normalizedTitle,
-        excerpt: String(metadata.excerpt || note || '').trim().slice(0, 500) || null,
+        excerpt: String(metadata.excerpt || source_excerpt || note || '').trim().slice(0, 500) || null,
         content: normalizedContent,
         status: 'published',
-        author: 'OpenClaw Agent',
+        author: selectedAuthor,
         category: metadata.category,
         tags: metadata.tags.filter(Boolean).join(','),
       },
       create: {
         slug,
         title: normalizedTitle,
-        excerpt: String(metadata.excerpt || note || '').trim().slice(0, 500) || null,
+        excerpt: String(metadata.excerpt || source_excerpt || note || '').trim().slice(0, 500) || null,
         content: normalizedContent,
         status: 'published',
-        author: 'OpenClaw Agent',
+        author: selectedAuthor,
         category: metadata.category,
         tags: metadata.tags.filter(Boolean).join(','),
       },
@@ -719,12 +751,15 @@ app.post('/api/ai/translate', async (req, res) => {
   }
 
   try {
-    const result = await generateAiText({
-      systemPrompt: `You are a precise multilingual translator for OpenGuideHub. Translate the provided article into ${targetLanguage}. Preserve headings, bullets, and structure. Do not add commentary or extra notes.`,
-      userPrompt: `Title: ${title}\n\nContent:\n${normalizedText}`,
-      temperature: 0.2,
-      maxTokens: 2200,
-    });
+    const result = await Promise.race([
+      generateAiText({
+        systemPrompt: `You are a precise multilingual translator for OpenGuideHub. Translate the provided article into ${targetLanguage}. Preserve headings, bullets, and structure. Do not add commentary or extra notes.`,
+        userPrompt: `Title: ${title}\n\nContent:\n${normalizedText}`,
+        temperature: 0.2,
+        maxTokens: 2200,
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('AI translation timeout')), 10000)),
+    ]);
 
     return res.json({
       ok: true,
@@ -754,12 +789,15 @@ app.post('/api/ai/explain', async (req, res) => {
   }
 
   try {
-    const result = await generateAiText({
-      systemPrompt: `You are the OpenGuideHub reading assistant. Answer clearly in ${language}. Use only the provided article context, explain difficult ideas simply, and avoid making up facts.`,
-      userPrompt: `Article title: ${title}\n\nReader question: ${question || 'Give me a simple explanation and key takeaways.'}\n\nArticle content:\n${normalizedContent}`,
-      temperature: 0.3,
-      maxTokens: 1400,
-    });
+    const result = await Promise.race([
+      generateAiText({
+        systemPrompt: `You are the OpenGuideHub reading assistant. Answer clearly in ${language}. Use only the provided article context, explain difficult ideas simply, and avoid making up facts. Prefer a short TL;DR first, then 3 key takeaways.`,
+        userPrompt: `Article title: ${title}\n\nReader question: ${question || 'Give me a simple explanation and key takeaways.'}\n\nArticle content:\n${normalizedContent}`,
+        temperature: 0.3,
+        maxTokens: 1200,
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('AI explain timeout')), 9000)),
+    ]);
 
     return res.json({
       ok: true,
