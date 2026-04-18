@@ -50,3 +50,4 @@ app.tar.gz
 .pgdata/
 .pgrun/
 .runtime/
+.vercel
