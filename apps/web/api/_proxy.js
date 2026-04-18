@@ -39,7 +39,7 @@ export async function proxyRequest(req, res, targetPath) {
       const text = await response.text();
       attempts.push({ endpoint, status: response.status, ok: response.ok });
 
-      if (response.ok || [400, 401, 403, 404, 429, 503].includes(response.status)) {
+      if (response.ok || [400, 401, 403, 429].includes(response.status)) {
         res.status(response.status);
         res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
         return res.send(text);
