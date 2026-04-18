@@ -19,6 +19,94 @@ import { fetchPublicPostBySlug, fetchPublicPosts, mergeArticles } from '@/lib/pu
 import { buildCategoryStats } from '@/lib/categoryUtils.js';
 import { explainArticle, translateArticle } from '@/lib/aiReaderService.js';
 
+function renderInlineContent(text = '') {
+  const value = String(text || '');
+  const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)|(https?:\/\/[^\s]+)|(\/articles\?[^\s]+)/g;
+  const nodes = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(value)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(value.slice(lastIndex, match.index));
+    }
+
+    const href = match[2] || match[3] || match[4] || '';
+    const label = match[1] || href.replace(/^https?:\/\/(www\.)?/, '');
+
+    if (href.startsWith('/')) {
+      nodes.push(
+        <Link key={`${href}-${match.index}`} to={href} className="text-primary font-medium hover:underline">
+          {label}
+        </Link>
+      );
+    } else {
+      nodes.push(
+        <a key={`${href}-${match.index}`} href={href} target="_blank" rel="noreferrer" className="text-primary font-medium hover:underline break-all">
+          {label}
+        </a>
+      );
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < value.length) {
+    nodes.push(value.slice(lastIndex));
+  }
+
+  return nodes;
+}
+
+function renderArticleBody(content = '') {
+  const blocks = String(content || '')
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  return blocks.map((block, index) => {
+    const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+
+    if (block.startsWith('# ')) {
+      return <h1 key={index} className="text-4xl font-bold mt-12 mb-4">{renderInlineContent(block.replace('# ', ''))}</h1>;
+    }
+
+    if (block.startsWith('## ')) {
+      return <h2 key={index} className="text-3xl font-bold mt-12 mb-4">{renderInlineContent(block.replace('## ', ''))}</h2>;
+    }
+
+    if (block.startsWith('### ')) {
+      return <h3 key={index} className="text-2xl font-semibold mt-8 mb-3">{renderInlineContent(block.replace('### ', ''))}</h3>;
+    }
+
+    if (block.startsWith('#### ')) {
+      return <h4 key={index} className="text-xl font-semibold mt-6 mb-2">{renderInlineContent(block.replace('#### ', ''))}</h4>;
+    }
+
+    if (lines.every((line) => /^[-*]\s+/.test(line))) {
+      return (
+        <ul key={index} className="mb-5 ml-6 list-disc space-y-2">
+          {lines.map((line, lineIndex) => (
+            <li key={`${index}-${lineIndex}`}>{renderInlineContent(line.replace(/^[-*]\s+/, ''))}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    if (lines.every((line) => /^\d+\.\s+/.test(line))) {
+      return (
+        <ol key={index} className="mb-5 ml-6 list-decimal space-y-2">
+          {lines.map((line, lineIndex) => (
+            <li key={`${index}-${lineIndex}`}>{renderInlineContent(line.replace(/^\d+\.\s+/, ''))}</li>
+          ))}
+        </ol>
+      );
+    }
+
+    return <p key={index} className="mb-4 leading-8 text-foreground/90">{renderInlineContent(block)}</p>;
+  });
+}
+
 function ArticleDetailPage() {
   const { slug } = useParams();
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -265,25 +353,15 @@ function ArticleDetailPage() {
                 </div>
 
                 <div className="prose prose-lg max-w-none mb-12">
-                  {articleContent.split('\n\n').map((paragraph, index) => {
-                    if (paragraph.startsWith('## ')) {
-                      return <h2 key={index} className="text-3xl font-bold mt-12 mb-4">{paragraph.replace('## ', '')}</h2>;
-                    } else if (paragraph.startsWith('### ')) {
-                      return <h3 key={index} className="text-2xl font-semibold mt-8 mb-3">{paragraph.replace('### ', '')}</h3>;
-                    } else if (paragraph.startsWith('#### ')) {
-                      return <h4 key={index} className="text-xl font-semibold mt-6 mb-2">{paragraph.replace('#### ', '')}</h4>;
-                    } else if (paragraph.startsWith('- ') || paragraph.startsWith('* ')) {
-                      return <li key={index} className="ml-6">{paragraph.substring(2)}</li>;
-                    } else {
-                      return <p key={index} className="mb-4 leading-relaxed">{paragraph}</p>;
-                    }
-                  })}
+                  {renderArticleBody(articleContent)}
                 </div>
 
                 {article.tags && article.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-8">
                     {article.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">{tag}</Badge>
+                      <Link key={tag} to={`/articles?tag=${encodeURIComponent(tag.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}`}>
+                        <Badge variant="secondary" className="hover:bg-primary hover:text-primary-foreground transition-colors">{tag}</Badge>
+                      </Link>
                     ))}
                   </div>
                 )}

@@ -269,7 +269,7 @@ async function analyzeContentMetadata({ title = '', url = '', note = '', formatt
   try {
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: `You are the OpenGuideHub analyzer+categorizor agent. Classify the content into exactly one category from: ${DEFAULT_CONTENT_CATEGORIES.join(', ')}. Return strict JSON with keys: category, excerpt, tags. Keep excerpt under 180 characters and tags as an array of 3 to 6 short phrases.`,
+        systemPrompt: `You are the OpenGuideHub analyzer+categorizor agent. Classify the content into exactly one category from: ${DEFAULT_CONTENT_CATEGORIES.join(', ')}. Return strict JSON with keys: category, excerpt, tags. Keep excerpt under 180 characters and make tags an array of 3 to 6 short phrases that act like subcategories or topic labels.`,
         userPrompt: `Title: ${title}\nSource: ${url || sourceDomain || 'N/A'}\n\nContent sample:\n${sample}`,
         temperature: 0.1,
         maxTokens: 220,
@@ -306,10 +306,12 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
   const baseText = String(formattedText || note || title).replace(/\s+/g, ' ').trim();
   const sentences = baseText.split(/(?<=[.!?])\s+/).filter(Boolean);
   const tldr = sentences.slice(0, 2).join(' ').slice(0, 360) || title;
-  const bullets = sentences.slice(0, 3).map((line) => `- ${line.slice(0, 180)}`).join('\n');
+  const bullets = sentences.slice(0, 4).map((line) => `- ${line.slice(0, 180)}`).join('\n');
   const sourceLabel = sourceDomain || (url ? new URL(url).hostname.replace(/^www\./, '') : 'reference source');
-  const sourceLine = url ? `\n\nRead full original article here: ${url}` : '';
-  return `## TL;DR\n${tldr}\n\n## Summary\n${bullets || '- This article has been archived and summarized for easier reading.'}\n\n## Why it matters\nThis post was reorganized for readability and reference by OpenGuideHub from ${sourceLabel}.${sourceLine}`.trim();
+  const internalLink = `https://openguidehub.org/articles?category=${slugify(category || 'technology')}`;
+  const sourceLine = url ? `Read full original article here: ${url}` : 'Source reference will be added when available.';
+
+  return `## TL;DR\n${tldr}\n\n## Summary\n${bullets || '- This article has been archived and summarized for easier reading.'}\n\n## Why it matters\nThis post was reorganized into a cleaner editorial format by OpenGuideHub for faster reading and easier reference.\n\n## Continue exploring\n- More ${category || 'technology'} posts on OpenGuideHub: ${internalLink}\n- Source report: ${sourceLabel}\n- ${sourceLine}`.trim();
 }
 
 async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE', sourceDomain = '' }) {
@@ -326,10 +328,12 @@ async function buildPublishedArticleContent({ title = '', url = '', note = '', f
   }
 
   try {
+    const internalLink = `https://openguidehub.org/articles?category=${slugify(category || 'technology')}`;
+
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: 'You are the OpenGuideHub editorial rewrite agent. Rewrite source material into an original magazine-style knowledge post. Use Markdown sections titled TL;DR, Summary, and Why it matters. Keep facts intact, avoid plagiarism, do not fabricate details, and keep the exact source attribution line at the end when a URL is provided.',
-        userPrompt: `Title: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\n\nSource material:\n${baseText}\n\nRequired ending line: ${sourceLine || 'No backlink line needed.'}`,
+        systemPrompt: 'You are the OpenGuideHub editorial rewrite agent. Rewrite source material into an original, professional magazine-style knowledge post. Use clean Markdown with sections titled TL;DR, Summary, Why it matters, and Continue exploring. Keep paragraphs short, use bullet points where useful, keep facts intact, avoid plagiarism, do not fabricate details, include one internal OpenGuideHub reading link when relevant, and keep the exact external source attribution line at the end when a URL is provided.',
+        userPrompt: `Title: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\n\nSource material:\n${baseText}\n\nRequired ending line: ${sourceLine || 'No backlink line needed.'}`,
         temperature: 0.35,
         maxTokens: 900,
         model: serviceState.ollamaRewriterModel,
@@ -518,7 +522,7 @@ app.get('/api/public/posts', async (req, res) => {
   const posts = await prisma.post.findMany({
     where: { status: 'published' },
     orderBy: { updatedAt: 'desc' },
-    take: 36,
+    take: 120,
     select: {
       id: true,
       slug: true,
