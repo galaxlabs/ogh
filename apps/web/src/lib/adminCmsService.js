@@ -9,8 +9,67 @@ const STORAGE_KEYS = {
   backups: 'ogh_admin_backups',
 };
 
-const ADMIN_API_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:3100';
+const ADMIN_API_URL = import.meta.env.VITE_ADMIN_API_URL || '';
 const DB_PROVIDER = import.meta.env.VITE_DATABASE_PROVIDER || 'postgresql';
+
+function normalizeBase(base = '') {
+  return String(base || '').trim().replace(/\/+$/, '');
+}
+
+function getAdminApiBases() {
+  const candidates = new Set();
+  const configured = normalizeBase(ADMIN_API_URL);
+
+  if (configured) {
+    candidates.add(configured);
+  }
+
+  if (typeof window !== 'undefined') {
+    const { hostname, origin } = window.location;
+
+    if (/localhost|127\.0\.0\.1/.test(hostname)) {
+      candidates.add('http://localhost:3100');
+      candidates.add('http://127.0.0.1:3100');
+    } else {
+      candidates.add(origin);
+      const parts = hostname.split('.');
+      if (parts.length >= 2) {
+        const rootDomain = parts.slice(-2).join('.');
+        candidates.add(`https://api.${rootDomain}`);
+        candidates.add(`https://admin.${rootDomain}`);
+        candidates.add(`http://api.${rootDomain}`);
+        candidates.add(`http://admin.${rootDomain}`);
+      }
+    }
+  }
+
+  return Array.from(candidates).map(normalizeBase).filter(Boolean);
+}
+
+async function requestAdminApi(path, init = {}) {
+  let lastResponse = null;
+  let lastError = null;
+
+  for (const base of getAdminApiBases()) {
+    try {
+      const response = await fetch(`${base}${path}`, init);
+
+      if (response.ok || [401, 403, 429].includes(response.status)) {
+        return response;
+      }
+
+      lastResponse = response;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastResponse) {
+    return lastResponse;
+  }
+
+  throw lastError || new Error('Admin API is not reachable');
+}
 
 function read(key, fallback) {
   try {
@@ -69,7 +128,7 @@ function getAuthHeaders() {
 
 export async function loginAdmin(email, password) {
   try {
-    const response = await fetch(`${ADMIN_API_URL}/api/auth/login`, {
+    const response = await requestAdminApi('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -99,7 +158,7 @@ export async function logoutAdmin() {
   localStorage.removeItem(STORAGE_KEYS.auth);
 
   try {
-    await fetch(`${ADMIN_API_URL}/api/auth/logout`, {
+    await requestAdminApi('/api/auth/logout', {
       method: 'POST',
       headers,
     });
@@ -185,7 +244,7 @@ export function appendLog(level, message, meta = {}) {
   logs.unshift(entry);
   write(STORAGE_KEYS.logs, logs.slice(0, 200));
 
-  fetch(`${ADMIN_API_URL}/api/logs`, {
+  requestAdminApi('/api/logs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(entry),
@@ -204,12 +263,12 @@ export async function getServiceStatus() {
   let databases = [];
 
   try {
-    const healthResponse = await fetch(`${ADMIN_API_URL}/health`);
+    const healthResponse = await requestAdminApi('/health');
     if (healthResponse.ok) {
       apiStatus = 'running';
     }
 
-    const protectedResponse = await fetch(`${ADMIN_API_URL}/api/status`, {
+    const protectedResponse = await requestAdminApi('/api/status', {
       headers: getAuthHeaders(),
     });
 
@@ -249,7 +308,7 @@ export function createBackupPayload() {
   write(STORAGE_KEYS.backups, backups.slice(0, 20));
   appendLog('info', 'Backup created from dashboard');
 
-  fetch(`${ADMIN_API_URL}/api/backup`, {
+  requestAdminApi('/api/backup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(payload),
