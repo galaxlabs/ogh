@@ -3,32 +3,23 @@ function normalizeBase(base = '') {
 }
 
 function getCandidateBases() {
-  const candidates = new Set();
   const configured = normalizeBase(import.meta.env.VITE_PUBLIC_CONTENT_API_URL || '');
 
   if (configured) {
-    candidates.add(configured);
+    return [configured];
   }
 
   if (typeof window !== 'undefined') {
     const { hostname, origin } = window.location;
 
     if (/localhost|127\.0\.0\.1/.test(hostname)) {
-      candidates.add('http://127.0.0.1:3100');
-    } else {
-      candidates.add(origin);
-      const parts = hostname.split('.');
-      if (parts.length >= 2) {
-        const rootDomain = parts.slice(-2).join('.');
-        candidates.add(`https://api.${rootDomain}`);
-        candidates.add(`https://admin.${rootDomain}`);
-      }
+      return [normalizeBase(origin), 'http://127.0.0.1:3100', ''];
     }
+
+    return [];
   }
 
-  candidates.add('');
-
-  return Array.from(candidates).map(normalizeBase);
+  return [];
 }
 
 async function requestAi(path, payload) {

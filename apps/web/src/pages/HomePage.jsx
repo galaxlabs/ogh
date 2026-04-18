@@ -297,20 +297,12 @@ function HomePage() {
               <p className="text-muted-foreground mb-8 text-lg">
                 Manage articles, pages, categories, and downloadable files in one content workflow.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/downloads">
-                  <Button size="lg" className="gap-2">
-                    Explore Downloads
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link to="/roadmap.sh">
-                  <Button size="lg" variant="outline" className="gap-2">
-                    Open Roadmap
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
+              <Link to="/downloads">
+                <Button size="lg" className="gap-2">
+                  Explore Downloads
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           </section>
 

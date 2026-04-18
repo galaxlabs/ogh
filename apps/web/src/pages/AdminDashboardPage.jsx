@@ -205,11 +205,8 @@ function AdminDashboardPage() {
                     <div className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">
                       <div className="font-medium text-foreground mb-1">Access note</div>
                       <p>
-                        If sign-in does not respond, the public admin, api, and health subdomains still need server DNS and SSL wiring.
+                        If sign-in still fails, the backend server domains may still be waiting for DNS and SSL activation.
                       </p>
-                      <Link to="/roadmap.sh" className="text-primary underline underline-offset-4 mt-2 inline-block">
-                        Open roadmap and backend guide
-                      </Link>
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-4">

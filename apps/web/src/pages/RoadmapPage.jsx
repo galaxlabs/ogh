@@ -98,17 +98,10 @@ function RoadmapPage() {
                   This page shows where the platform is heading, how the public site and backend fit together, and what you can manage from PocketBase.
                 </p>
                 <div className="flex flex-wrap gap-3 mt-8">
-                  <Link to="/admin">
-                    <Button className="gap-2">
-                      Open admin
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                  <a href="http://127.0.0.1:8090/_/" target="_blank" rel="noreferrer">
-                    <Button variant="outline" className="gap-2 border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800">
-                      Open PocketBase locally
-                    </Button>
-                  </a>
+                  <Button className="gap-2">
+                    Platform overview
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>

@@ -34,6 +34,7 @@ const serviceState = {
   jwtSecret: process.env.JWT_SECRET || '',
   openClawPublishToken: process.env.OPENCLAW_PUBLISH_TOKEN || '',
   publicSiteUrl: process.env.PUBLIC_SITE_URL || 'https://openguidehub.org',
+  aiRewriteOnPublish: String(process.env.AI_REWRITE_ON_PUBLISH || '1') === '1',
   aiProvider: process.env.AI_PROVIDER || 'ollama',
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434',
   ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:8b',
@@ -199,6 +200,37 @@ function buildFallbackExplanation(title = '', content = '', question = '') {
   }
 
   return `Quick overview: ${preview || String(title || 'This post is ready for AI explanation once the model is connected.')}`;
+}
+
+async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE' }) {
+  const sourceLine = url ? `\n\nOriginal article: Read here ${url}` : '';
+  const baseText = String(formattedText || [title, note].filter(Boolean).join('\n\n')).trim();
+  const fallback = `${baseText}${sourceLine}`.trim();
+
+  if (!serviceState.aiRewriteOnPublish || !baseText) {
+    return fallback;
+  }
+
+  if (baseText.length > 4000) {
+    return fallback;
+  }
+
+  try {
+    const result = await Promise.race([
+      generateAiText({
+        systemPrompt: 'You are an SEO-friendly publishing editor. Rewrite the provided source into a concise, original summary for a knowledge website. Keep facts intact, do not fabricate details, and end with the exact source backlink line when provided.',
+        userPrompt: `Title: ${title}\nCategory: ${category}\nSource URL: ${url || 'N/A'}\n\nSource material:\n${baseText}\n\nFinish with: ${sourceLine.trim() || 'No backlink line needed.'}`,
+        temperature: 0.3,
+        maxTokens: 650,
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('AI rewrite timeout')), 6000)),
+    ]);
+
+    return String(result.content || fallback).trim();
+  } catch (error) {
+    log('warn', 'AI rewrite on publish failed, using fallback content', { error: error.message, title });
+    return fallback;
+  }
 }
 
 function readToken(req) {
@@ -476,9 +508,13 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
 
     const normalizedTitle = String(title || source_domain || 'Imported post').trim();
     const normalizedUrl = String(url || '').trim();
-    const normalizedContent = String(
-      formatted_text || [normalizedTitle, normalizedUrl, note].filter(Boolean).join('\n\n')
-    ).trim();
+    const normalizedContent = await buildPublishedArticleContent({
+      title: normalizedTitle,
+      url: normalizedUrl,
+      note: String(note || '').trim(),
+      formattedText: String(formatted_text || ''),
+      category: String(category || 'LINK'),
+    });
 
     if (!normalizedTitle && !normalizedUrl && !normalizedContent) {
       return res.status(400).json({ ok: false, message: 'Missing publish content' });
