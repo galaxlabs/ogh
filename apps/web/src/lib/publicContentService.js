@@ -1,5 +1,37 @@
-const PUBLIC_API_BASE = import.meta.env.VITE_PUBLIC_CONTENT_API_URL || '';
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80';
+
+function normalizeBase(base = '') {
+  return String(base || '').trim().replace(/\/+$/, '');
+}
+
+function getCandidateBases() {
+  const candidates = new Set();
+  const configured = normalizeBase(import.meta.env.VITE_PUBLIC_CONTENT_API_URL || '');
+
+  if (configured) {
+    candidates.add(configured);
+  }
+
+  if (typeof window !== 'undefined') {
+    const { hostname, origin } = window.location;
+
+    if (/localhost|127\.0\.0\.1/.test(hostname)) {
+      candidates.add('http://127.0.0.1:3100');
+    } else {
+      const parts = hostname.split('.');
+      if (parts.length >= 2) {
+        const rootDomain = parts.slice(-2).join('.');
+        candidates.add(`https://api.${rootDomain}`);
+        candidates.add(`https://admin.${rootDomain}`);
+      }
+      candidates.add(origin);
+    }
+  }
+
+  candidates.add('');
+
+  return Array.from(candidates).map(normalizeBase);
+}
 
 export function normalizePublicArticle(article) {
   const content = String(article?.content || '');
@@ -31,31 +63,43 @@ export function normalizePublicArticle(article) {
 }
 
 export async function fetchPublicPosts() {
-  try {
-    const response = await fetch(`${PUBLIC_API_BASE}/api/public/posts`);
-    if (!response.ok) {
-      return [];
+  for (const base of getCandidateBases()) {
+    try {
+      const response = await fetch(`${base}/api/public/posts`, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) {
+        continue;
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data.map(normalizePublicArticle) : [];
+    } catch {
+      continue;
     }
-    const data = await response.json();
-    return Array.isArray(data) ? data.map(normalizePublicArticle) : [];
-  } catch {
-    return [];
   }
+
+  return [];
 }
 
 export async function fetchPublicPostBySlug(slug) {
   if (!slug) return null;
 
-  try {
-    const response = await fetch(`${PUBLIC_API_BASE}/api/public/posts?slug=${encodeURIComponent(slug)}`);
-    if (!response.ok) {
-      return null;
+  for (const base of getCandidateBases()) {
+    try {
+      const response = await fetch(`${base}/api/public/posts/${encodeURIComponent(slug)}`, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) {
+        continue;
+      }
+      const data = await response.json();
+      return normalizePublicArticle(data);
+    } catch {
+      continue;
     }
-    const data = await response.json();
-    return normalizePublicArticle(data);
-  } catch {
-    return null;
   }
+
+  return null;
 }
 
 export function mergeArticles(staticArticles = [], remoteArticles = []) {

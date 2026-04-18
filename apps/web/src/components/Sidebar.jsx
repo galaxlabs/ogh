@@ -42,7 +42,7 @@ function Sidebar({ popularPosts = [], categories = [] }) {
             {categories.slice(0, 10).map((category) => (
               <Link key={category.slug} to={`/categories#${category.slug}`}>
                 <Badge variant="secondary" className="hover:bg-primary hover:text-primary-foreground transition-colors">
-                  {category.name} ({category.count})
+                  {category.name}{category.count > 0 ? ` (${category.count})` : ''}
                 </Badge>
               </Link>
             ))}

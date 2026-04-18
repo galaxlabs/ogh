@@ -1,5 +1,4 @@
 ## Pages
-- [- OpenGuideHub`}](/articledetail): No description available
 - [`}](/home): No description available
 - [Downloads | OpenGuideHub](/downloads): Download templates, guides, and CMS starter resources from OpenGuideHub.
 - [Untitled Page](/about): Learn about OpenGuideHub

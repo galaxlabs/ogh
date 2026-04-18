@@ -87,13 +87,15 @@ function CategoryCard({ category, index = 0 }) {
                 <IconComponent className="h-6 w-6 text-primary" />
               </div>
               <div className="flex-1">
-                <div className="flex items-start justify-between mb-2">
+                <div className="flex items-start justify-between mb-2 gap-3">
                   <h3 className="font-semibold group-hover:text-primary transition-colors">
                     {category.name}
                   </h3>
-                  <Badge variant="secondary" className="text-xs">
-                    {category.count}
-                  </Badge>
+                  {category.count > 0 && (
+                    <Badge variant="secondary" className="text-xs whitespace-nowrap">
+                      {category.count}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground line-clamp-2">
                   {category.description}

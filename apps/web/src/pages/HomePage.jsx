@@ -17,6 +17,7 @@ import NewsletterSignup from '@/components/NewsletterSignup.jsx';
 import { articles, categories } from '@/data/articles.js';
 import { getTranslation } from '@/data/i18n.js';
 import { fetchPublicPosts, mergeArticles } from '@/lib/publicContentService.js';
+import { buildCategoryStats } from '@/lib/categoryUtils.js';
 
 function HomePage() {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -43,6 +44,25 @@ function HomePage() {
   const tutorialArticles = allArticles.filter(a => a.category.includes('Tutorial') || a.category === 'Programming').slice(0, 3);
   const reviewArticles = allArticles.filter(a => a.category.includes('Review')).slice(0, 3);
   const scienceArticles = allArticles.filter(a => ['Physics', 'Chemistry', 'Biology'].includes(a.category)).slice(0, 4);
+  const categoryStats = buildCategoryStats(categories, allArticles);
+  const aiFocusAreas = [
+    {
+      title: 'AI Agents',
+      text: 'Autonomous research, publishing, and workflow assistants for your content stack.',
+    },
+    {
+      title: 'AI Tools',
+      text: 'Practical explainers, summarizers, translators, and productivity helpers for readers.',
+    },
+    {
+      title: 'FOSS Updates',
+      text: 'Fresh open source news, releases, and community discoveries published into your site.',
+    },
+    {
+      title: 'Read in Any Language',
+      text: 'Each article can now be translated on demand into Urdu, Arabic, and other languages.',
+    },
+  ];
 
   return (
     <>
@@ -140,7 +160,7 @@ function HomePage() {
               </div>
 
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {categories.map((category, index) => (
+                {categoryStats.map((category, index) => (
                   <CategoryCard key={category.id} category={category} index={index} />
                 ))}
               </div>
@@ -152,6 +172,26 @@ function HomePage() {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
+              </div>
+            </div>
+          </section>
+
+          <section className="py-20 bg-gradient-to-br from-primary/5 to-secondary/10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">AI readers, tools, and FOSS updates</h2>
+                <p className="text-muted-foreground max-w-3xl mx-auto">
+                  The platform is now structured for multilingual reading, AI-assisted explanations, agent workflows, and open source update publishing.
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
+                {aiFocusAreas.map((item) => (
+                  <div key={item.title} className="rounded-2xl border bg-background p-6 shadow-sm">
+                    <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-6">{item.text}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </section>

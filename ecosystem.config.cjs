@@ -12,10 +12,8 @@ module.exports = {
     {
       name: 'ogh-pocketbase',
       cwd: '/home/fg/ogh/apps/pocketbase',
-      script: './pocketbase',
-      args: 'serve --http=0.0.0.0:8090 --encryptionEnv=PB_ENCRYPTION_KEY --dir=./pb_data_dev --migrationsDir=./pb_migrations --hooksDir=./pb_hooks --hooksWatch=false',
-      interpreter: 'none',
-      env_file: '/home/fg/ogh/.env',
+      script: './start-pm2.sh',
+      interpreter: 'bash',
       autorestart: true,
       watch: false,
     }

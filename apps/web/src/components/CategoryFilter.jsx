@@ -23,9 +23,11 @@ function CategoryFilter({ categories, selectedCategory, onCategoryChange }) {
           className="transition-all duration-200"
         >
           {category.name}
-          <Badge variant="secondary" className="ml-2 text-xs">
-            {category.count}
-          </Badge>
+          {category.count > 0 && (
+            <Badge variant="secondary" className="ml-2 text-xs">
+              {category.count}
+            </Badge>
+          )}
         </Button>
       ))}
     </div>

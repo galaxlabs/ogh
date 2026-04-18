@@ -32,6 +32,12 @@ const serviceState = {
   adminEmail: process.env.ADMIN_EMAIL || '',
   adminPassword: process.env.ADMIN_PASSWORD || '',
   openClawPublishToken: process.env.OPENCLAW_PUBLISH_TOKEN || '',
+  publicSiteUrl: process.env.PUBLIC_SITE_URL || 'https://openguidehub.org',
+  aiProvider: process.env.AI_PROVIDER || 'ollama',
+  ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434',
+  ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:8b',
+  openRouterApiKey: process.env.OPENROUTER_API_KEY || '',
+  openRouterModel: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat-v3-0324',
 };
 
 const prisma = serviceState.databaseUrl ? new PrismaClient() : null;
@@ -91,6 +97,107 @@ async function verifyPrismaConnection() {
   }
 
   return prismaState;
+}
+
+function getAiProviderOrder() {
+  const preferred = serviceState.aiProvider === 'openrouter'
+    ? ['openrouter', 'ollama']
+    : ['ollama', 'openrouter'];
+
+  return [...new Set(preferred)];
+}
+
+async function callOllamaChat(messages, temperature = 0.2) {
+  const response = await fetch(`${serviceState.ollamaBaseUrl}/api/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      model: serviceState.ollamaModel,
+      messages,
+      stream: false,
+      options: { temperature },
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Ollama request failed: ${text || response.status}`);
+  }
+
+  const data = await response.json();
+  return {
+    provider: 'ollama',
+    content: data?.message?.content || data?.response || '',
+  };
+}
+
+async function callOpenRouterChat(messages, temperature = 0.2, maxTokens = 1200) {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${serviceState.openRouterApiKey}`,
+      'HTTP-Referer': serviceState.publicSiteUrl,
+      'X-Title': 'OpenGuideHub',
+    },
+    body: JSON.stringify({
+      model: serviceState.openRouterModel,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`OpenRouter request failed: ${text || response.status}`);
+  }
+
+  const data = await response.json();
+  return {
+    provider: 'openrouter',
+    content: data?.choices?.[0]?.message?.content || '',
+  };
+}
+
+async function generateAiText({ systemPrompt, userPrompt, temperature = 0.2, maxTokens = 1200 }) {
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ];
+
+  const errors = [];
+
+  for (const provider of getAiProviderOrder()) {
+    try {
+      if (provider === 'ollama' && serviceState.ollamaBaseUrl && serviceState.ollamaModel) {
+        return await callOllamaChat(messages, temperature);
+      }
+
+      if (provider === 'openrouter' && serviceState.openRouterApiKey) {
+        return await callOpenRouterChat(messages, temperature, maxTokens);
+      }
+    } catch (error) {
+      errors.push(error.message);
+      log('warn', 'AI provider attempt failed', { provider, error: error.message });
+    }
+  }
+
+  throw new Error(errors[0] || 'No AI provider is configured yet');
+}
+
+function buildFallbackExplanation(title = '', content = '', question = '') {
+  const cleaned = String(content || '').replace(/\s+/g, ' ').trim();
+  const preview = cleaned.split(/(?<=[.!?])\s+/).slice(0, 3).join(' ');
+
+  if (question) {
+    return `This article is about ${title || 'the requested topic'}. Based on the locally available content, here is the most relevant explanation: ${preview}`;
+  }
+
+  return `Quick overview: ${preview || String(title || 'This post is ready for AI explanation once the model is connected.')}`;
 }
 
 function readToken(req) {
@@ -361,7 +468,88 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
   }
 });
 
+app.get('/api/ai/status', (req, res) => {
+  res.json({
+    ok: true,
+    primaryProvider: serviceState.aiProvider,
+    ollamaConfigured: Boolean(serviceState.ollamaBaseUrl && serviceState.ollamaModel),
+    openRouterConfigured: Boolean(serviceState.openRouterApiKey),
+    publicSiteUrl: serviceState.publicSiteUrl,
+  });
+});
+
+app.post('/api/ai/translate', async (req, res) => {
+  const { title = '', text = '', targetLanguage = 'Urdu' } = req.body || {};
+  const normalizedText = String(text || '').trim();
+
+  if (!normalizedText) {
+    return res.status(400).json({ ok: false, message: 'Text is required for translation' });
+  }
+
+  if (normalizedText.length > 15000) {
+    return res.status(413).json({ ok: false, message: 'Text is too large for one translation request' });
+  }
+
+  try {
+    const result = await generateAiText({
+      systemPrompt: `You are a precise multilingual translator for OpenGuideHub. Translate the provided article into ${targetLanguage}. Preserve headings, bullets, and structure. Do not add commentary or extra notes.`,
+      userPrompt: `Title: ${title}\n\nContent:\n${normalizedText}`,
+      temperature: 0.2,
+      maxTokens: 2200,
+    });
+
+    return res.json({
+      ok: true,
+      provider: result.provider,
+      targetLanguage,
+      content: result.content,
+    });
+  } catch (error) {
+    log('warn', 'AI translation unavailable', { error: error.message, targetLanguage });
+    return res.status(503).json({
+      ok: false,
+      message: `Translation is unavailable until Ollama or OpenRouter is configured: ${error.message}`,
+    });
+  }
+});
+
+app.post('/api/ai/explain', async (req, res) => {
+  const { title = '', content = '', question = '', language = 'English' } = req.body || {};
+  const normalizedContent = String(content || '').trim();
+
+  if (!normalizedContent) {
+    return res.status(400).json({ ok: false, message: 'Post content is required' });
+  }
+
+  if (normalizedContent.length > 18000) {
+    return res.status(413).json({ ok: false, message: 'Post content is too large for one AI request' });
+  }
+
+  try {
+    const result = await generateAiText({
+      systemPrompt: `You are the OpenGuideHub reading assistant. Answer clearly in ${language}. Use only the provided article context, explain difficult ideas simply, and avoid making up facts.`,
+      userPrompt: `Article title: ${title}\n\nReader question: ${question || 'Give me a simple explanation and key takeaways.'}\n\nArticle content:\n${normalizedContent}`,
+      temperature: 0.3,
+      maxTokens: 1400,
+    });
+
+    return res.json({
+      ok: true,
+      provider: result.provider,
+      answer: result.content,
+    });
+  } catch (error) {
+    log('warn', 'AI explanation fallback used', { error: error.message });
+    return res.json({
+      ok: true,
+      provider: 'local-fallback',
+      answer: buildFallbackExplanation(title, normalizedContent, question),
+      warning: error.message,
+    });
+  }
+});
+
 app.listen(port, async () => {
   await verifyPrismaConnection();
-  log('info', `Admin API listening on port ${port}`, { port, dbProvider: serviceState.dbProvider, database: prismaState.message });
+  log('info', `Admin API listening on port ${port}`, { port, dbProvider: serviceState.dbProvider, database: prismaState.message, aiProvider: serviceState.aiProvider });
 });

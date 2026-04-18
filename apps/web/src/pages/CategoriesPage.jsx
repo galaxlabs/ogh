@@ -6,17 +6,24 @@ import Footer from '@/components/Footer.jsx';
 import Breadcrumb from '@/components/Breadcrumb.jsx';
 import CategoryCard from '@/components/CategoryCard.jsx';
 import SearchBar from '@/components/SearchBar.jsx';
-import { categories } from '@/data/articles.js';
+import { articles, categories } from '@/data/articles.js';
 import { getTranslation } from '@/data/i18n.js';
+import { fetchPublicPosts, mergeArticles } from '@/lib/publicContentService.js';
+import { buildCategoryStats } from '@/lib/categoryUtils.js';
 
 function CategoriesPage() {
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [searchQuery, setSearchQuery] = useState('');
+  const [allArticles, setAllArticles] = useState(articles);
   const translations = getTranslation(currentLanguage);
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language') || 'en';
     setCurrentLanguage(savedLanguage);
+
+    fetchPublicPosts()
+      .then((remoteArticles) => setAllArticles(mergeArticles(articles, remoteArticles)))
+      .catch(() => setAllArticles(articles));
   }, []);
 
   const handleLanguageChange = (lang) => {
@@ -24,7 +31,9 @@ function CategoriesPage() {
     localStorage.setItem('language', lang);
   };
 
-  const filteredCategories = categories.filter(category =>
+  const categoryStats = buildCategoryStats(categories, allArticles);
+
+  const filteredCategories = categoryStats.filter(category =>
     category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     category.description.toLowerCase().includes(searchQuery.toLowerCase())
   );

@@ -11,6 +11,7 @@ import Sidebar from '@/components/Sidebar.jsx';
 import { articles, categories } from '@/data/articles.js';
 import { getTranslation } from '@/data/i18n.js';
 import { fetchPublicPosts, mergeArticles } from '@/lib/publicContentService.js';
+import { buildCategoryStats, slugifyCategory } from '@/lib/categoryUtils.js';
 
 function ArticlesPage() {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -33,11 +34,12 @@ function ArticlesPage() {
     localStorage.setItem('language', lang);
   };
 
+  const categoryStats = buildCategoryStats(categories, allArticles);
+
   const filteredArticles = allArticles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || 
-                           article.category.toLowerCase().replace(/\s+/g, '-') === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || slugifyCategory(article.category) === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -79,7 +81,7 @@ function ArticlesPage() {
                     placeholder={translations.common.search}
                   />
                   <CategoryFilter
-                    categories={categories.slice(0, 12)}
+                    categories={categoryStats.slice(0, 12)}
                     selectedCategory={selectedCategory}
                     onCategoryChange={setSelectedCategory}
                   />
@@ -104,7 +106,7 @@ function ArticlesPage() {
               </div>
 
               <div className="lg:col-span-1">
-                <Sidebar popularPosts={allArticles} categories={categories} />
+                <Sidebar popularPosts={allArticles} categories={categoryStats} />
               </div>
             </div>
           </div>
