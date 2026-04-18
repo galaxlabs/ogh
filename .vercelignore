@@ -1,0 +1,10 @@
+.env
+.env.*
+node_modules
+.pgrun
+.pgdata
+.runtime
+apps/pocketbase/pb_data
+apps/pocketbase/pb_data_dev
+apps/admin-api/runtime
+logs

@@ -16,13 +16,13 @@ function getCandidateBases() {
     if (/localhost|127\.0\.0\.1/.test(hostname)) {
       candidates.add('http://127.0.0.1:3100');
     } else {
+      candidates.add(origin);
       const parts = hostname.split('.');
       if (parts.length >= 2) {
         const rootDomain = parts.slice(-2).join('.');
         candidates.add(`https://api.${rootDomain}`);
         candidates.add(`https://admin.${rootDomain}`);
       }
-      candidates.add(origin);
     }
   }
 
