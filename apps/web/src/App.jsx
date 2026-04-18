@@ -23,7 +23,7 @@ import DisclaimerPage from './pages/DisclaimerPage.jsx';
 
 function AnalyticsBootstrap() {
   useEffect(() => {
-    const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
+    const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-NCP1VFEKRR';
     if (!measurementId || typeof window === 'undefined' || document.getElementById('ogh-ga-script')) {
       return;
     }
