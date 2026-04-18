@@ -49,3 +49,4 @@ app.tar.gz
 # local project database
 .pgdata/
 .pgrun/
+.runtime/

@@ -14,29 +14,47 @@ import { Separator } from '@/components/ui/separator';
 import { Clock, Calendar, Share2, Bookmark, Facebook, Twitter, Linkedin } from 'lucide-react';
 import { articles, categories } from '@/data/articles.js';
 import { getTranslation } from '@/data/i18n.js';
+import { fetchPublicPostBySlug, fetchPublicPosts, mergeArticles } from '@/lib/publicContentService.js';
 
 function ArticleDetailPage() {
   const { slug } = useParams();
   const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [allArticles, setAllArticles] = useState(articles);
+  const [loading, setLoading] = useState(true);
   const translations = getTranslation(currentLanguage);
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language') || 'en';
     setCurrentLanguage(savedLanguage);
-  }, []);
+
+    Promise.all([fetchPublicPosts(), fetchPublicPostBySlug(slug)])
+      .then(([remoteArticles, remoteArticle]) => {
+        const merged = mergeArticles(articles, remoteArticles);
+        if (remoteArticle) {
+          setAllArticles(mergeArticles(merged, [remoteArticle]));
+        } else {
+          setAllArticles(merged);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [slug]);
 
   const handleLanguageChange = (lang) => {
     setCurrentLanguage(lang);
     localStorage.setItem('language', lang);
   };
 
-  const article = articles.find(a => a.slug === slug);
+  const article = allArticles.find(a => a.slug === slug);
+
+  if (!article && loading) {
+    return null;
+  }
 
   if (!article) {
     return <Navigate to="/articles" replace />;
   }
 
-  const relatedArticles = articles.filter(a => a.category === article.category && a.id !== article.id).slice(0, 3);
+  const relatedArticles = allArticles.filter(a => a.category === article.category && a.id !== article.id).slice(0, 3);
 
   return (
     <>
@@ -142,7 +160,7 @@ function ArticleDetailPage() {
 
               <div className="lg:col-span-1">
                 <div className="sticky top-24">
-                  <Sidebar popularPosts={articles} categories={categories} />
+                  <Sidebar popularPosts={allArticles} categories={categories} />
                 </div>
               </div>
             </div>

@@ -16,14 +16,20 @@ import ReviewCard from '@/components/ReviewCard.jsx';
 import NewsletterSignup from '@/components/NewsletterSignup.jsx';
 import { articles, categories } from '@/data/articles.js';
 import { getTranslation } from '@/data/i18n.js';
+import { fetchPublicPosts, mergeArticles } from '@/lib/publicContentService.js';
 
 function HomePage() {
   const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [allArticles, setAllArticles] = useState(articles);
   const translations = getTranslation(currentLanguage);
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language') || 'en';
     setCurrentLanguage(savedLanguage);
+
+    fetchPublicPosts()
+      .then((remoteArticles) => setAllArticles(mergeArticles(articles, remoteArticles)))
+      .catch(() => setAllArticles(articles));
   }, []);
 
   const handleLanguageChange = (lang) => {
@@ -31,12 +37,12 @@ function HomePage() {
     localStorage.setItem('language', lang);
   };
 
-  const featuredArticles = articles.filter(a => a.featured);
-  const latestArticles = articles.slice(0, 6);
-  const trendingArticles = articles.slice(0, 5);
-  const tutorialArticles = articles.filter(a => a.category.includes('Tutorial') || a.category === 'Programming').slice(0, 3);
-  const reviewArticles = articles.filter(a => a.category.includes('Review')).slice(0, 3);
-  const scienceArticles = articles.filter(a => ['Physics', 'Chemistry', 'Biology'].includes(a.category)).slice(0, 4);
+  const featuredArticles = allArticles.filter(a => a.featured);
+  const latestArticles = allArticles.slice(0, 6);
+  const trendingArticles = allArticles.slice(0, 5);
+  const tutorialArticles = allArticles.filter(a => a.category.includes('Tutorial') || a.category === 'Programming').slice(0, 3);
+  const reviewArticles = allArticles.filter(a => a.category.includes('Review')).slice(0, 3);
+  const scienceArticles = allArticles.filter(a => ['Physics', 'Chemistry', 'Biology'].includes(a.category)).slice(0, 4);
 
   return (
     <>

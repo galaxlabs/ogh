@@ -31,6 +31,7 @@ const serviceState = {
   mysqlUrl: process.env.MYSQL_DATABASE_URL || '',
   adminEmail: process.env.ADMIN_EMAIL || '',
   adminPassword: process.env.ADMIN_PASSWORD || '',
+  openClawPublishToken: process.env.OPENCLAW_PUBLISH_TOKEN || '',
 };
 
 const prisma = serviceState.databaseUrl ? new PrismaClient() : null;
@@ -50,6 +51,15 @@ function log(level, message, meta = {}) {
   fs.appendFileSync(logFile, JSON.stringify(entry) + '\n');
   console.log(`[${entry.timestamp}] [${level.toUpperCase()}] ${message}`);
   return entry;
+}
+
+function slugify(value = '') {
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'post';
 }
 
 async function verifyPrismaConnection() {
@@ -120,6 +130,42 @@ function requireAuth(req, res, next) {
   next();
 }
 
+function requireOpenClawToken(req, res, next) {
+  const token = readToken(req);
+
+  if (!serviceState.openClawPublishToken) {
+    return res.status(503).json({ ok: false, message: 'OpenClaw publishing is not configured on the server' });
+  }
+
+  if (!token || token !== serviceState.openClawPublishToken) {
+    return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  }
+
+  next();
+}
+
+function mapPublicPost(post) {
+  const content = String(post.content || '');
+  return {
+    id: post.id,
+    slug: post.slug,
+    title: post.title,
+    excerpt: post.excerpt || '',
+    content,
+    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
+    category: post.category || 'Imported',
+    tags: String(post.tags || '').split(',').map((tag) => tag.trim()).filter(Boolean),
+    readingTime: Math.max(1, Math.ceil(content.split(/\s+/).filter(Boolean).length / 200)),
+    publishDate: post.updatedAt || post.createdAt,
+    author: {
+      name: post.author || 'OpenClaw Agent',
+      avatar: 'OG',
+      bio: 'Auto-published content from integrated channels.',
+    },
+    featured: false,
+  };
+}
+
 app.get('/health', (req, res) => {
   const health = {
     ok: true,
@@ -131,6 +177,33 @@ app.get('/health', (req, res) => {
   };
   log('info', 'Health check requested', health);
   res.json(health);
+});
+
+app.get('/api/public/posts', async (req, res) => {
+  if (!prisma || !prismaState.connected) {
+    return res.json([]);
+  }
+
+  const posts = await prisma.post.findMany({
+    where: { status: 'published' },
+    orderBy: { updatedAt: 'desc' },
+    take: 100,
+  });
+
+  return res.json(posts.map(mapPublicPost));
+});
+
+app.get('/api/public/posts/:slug', async (req, res) => {
+  if (!prisma || !prismaState.connected) {
+    return res.status(503).json({ ok: false, message: 'Database is not ready' });
+  }
+
+  const post = await prisma.post.findUnique({ where: { slug: req.params.slug } });
+  if (!post || post.status !== 'published') {
+    return res.status(404).json({ ok: false, message: 'Post not found' });
+  }
+
+  return res.json(mapPublicPost(post));
 });
 
 app.post('/api/auth/login', (req, res) => {
@@ -220,6 +293,72 @@ app.post('/api/restore', requireAuth, (req, res) => {
   const payload = req.body || {};
   log('warn', 'Restore requested', { keys: Object.keys(payload) });
   res.json({ ok: true, restoredAt: new Date().toISOString(), payload });
+});
+
+app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
+  if (!prisma || !prismaState.connected) {
+    return res.status(503).json({ ok: false, message: 'Database is not ready' });
+  }
+
+  try {
+    const {
+      item_id,
+      title = '',
+      url = '',
+      note = '',
+      category = 'LINK',
+      source_domain = '',
+      formatted_text = '',
+    } = req.body || {};
+
+    const normalizedTitle = String(title || source_domain || 'Imported post').trim();
+    const normalizedUrl = String(url || '').trim();
+    const normalizedContent = String(
+      formatted_text || [normalizedTitle, normalizedUrl, note].filter(Boolean).join('\n\n')
+    ).trim();
+
+    if (!normalizedTitle && !normalizedUrl && !normalizedContent) {
+      return res.status(400).json({ ok: false, message: 'Missing publish content' });
+    }
+
+    const suffixSource = String(item_id || normalizedUrl || normalizedContent);
+    const suffix = crypto.createHash('sha1').update(suffixSource).digest('hex').slice(0, 10);
+    const slug = `${slugify(normalizedTitle)}-${suffix}`;
+
+    const saved = await prisma.post.upsert({
+      where: { slug },
+      update: {
+        title: normalizedTitle,
+        excerpt: String(note || '').trim().slice(0, 500) || null,
+        content: normalizedContent,
+        status: 'published',
+        author: 'OpenClaw Agent',
+        category: String(category || 'LINK'),
+        tags: [category, source_domain].filter(Boolean).join(','),
+      },
+      create: {
+        slug,
+        title: normalizedTitle,
+        excerpt: String(note || '').trim().slice(0, 500) || null,
+        content: normalizedContent,
+        status: 'published',
+        author: 'OpenClaw Agent',
+        category: String(category || 'LINK'),
+        tags: [category, source_domain].filter(Boolean).join(','),
+      },
+    });
+
+    log('info', 'OpenClaw content published', {
+      slug,
+      category,
+      itemId: item_id,
+    });
+
+    return res.status(201).json({ ok: true, slug, id: saved.id });
+  } catch (error) {
+    log('error', 'OpenClaw publish failed', { error: error.message });
+    return res.status(500).json({ ok: false, message: error.message });
+  }
 });
 
 app.listen(port, async () => {

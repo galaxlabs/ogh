@@ -10,16 +10,22 @@ import CategoryFilter from '@/components/CategoryFilter.jsx';
 import Sidebar from '@/components/Sidebar.jsx';
 import { articles, categories } from '@/data/articles.js';
 import { getTranslation } from '@/data/i18n.js';
+import { fetchPublicPosts, mergeArticles } from '@/lib/publicContentService.js';
 
 function ArticlesPage() {
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [allArticles, setAllArticles] = useState(articles);
   const translations = getTranslation(currentLanguage);
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language') || 'en';
     setCurrentLanguage(savedLanguage);
+
+    fetchPublicPosts()
+      .then((remoteArticles) => setAllArticles(mergeArticles(articles, remoteArticles)))
+      .catch(() => setAllArticles(articles));
   }, []);
 
   const handleLanguageChange = (lang) => {
@@ -27,7 +33,7 @@ function ArticlesPage() {
     localStorage.setItem('language', lang);
   };
 
-  const filteredArticles = articles.filter(article => {
+  const filteredArticles = allArticles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || 
@@ -98,7 +104,7 @@ function ArticlesPage() {
               </div>
 
               <div className="lg:col-span-1">
-                <Sidebar popularPosts={articles} categories={categories} />
+                <Sidebar popularPosts={allArticles} categories={categories} />
               </div>
             </div>
           </div>

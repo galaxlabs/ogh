@@ -300,6 +300,12 @@ export default defineConfig({
 		headers: {
 			'Cross-Origin-Embedder-Policy': 'credentialless',
 		},
+		proxy: {
+			'/api': {
+				target: 'http://127.0.0.1:3100',
+				changeOrigin: true,
+			},
+		},
 		allowedHosts: true,
 	},
 	resolve: {

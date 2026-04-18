@@ -8,7 +8,10 @@
     "build": "concurrently --raw \"npm run build --prefix apps/web\"",
     "start": "concurrently --kill-others --raw \"npm run start --prefix apps/pocketbase\" \"npm run start --prefix apps/admin-api\"",
     "lint": "concurrently --raw \"npm run lint --prefix apps/web\"",
-    "admin:api": "npm run dev --prefix apps/admin-api"
+    "admin:api": "npm run dev --prefix apps/admin-api",
+    "backend:start": "sh ./scripts/start_backend_services.sh",
+    "backend:stop": "sh ./scripts/stop_backend_services.sh",
+    "backend:status": "sh ./scripts/status_backend_services.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
