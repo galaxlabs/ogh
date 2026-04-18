@@ -14,6 +14,7 @@ function Footer({ translations }) {
     resources: [
       { label: translations.nav.articles, path: '/articles' },
       { label: translations.nav.downloads, path: '/downloads' },
+      { label: 'Roadmap', path: '/roadmap.sh' },
       { label: translations.nav.reviews, path: '/reviews' },
       { label: translations.nav.categories, path: '/categories' },
     ],

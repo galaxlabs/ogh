@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,8 @@ function AdminDashboardPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [authError, setAuthError] = useState('');
   const [posts, setPosts] = useState([]);
   const [downloads, setDownloads] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -86,15 +89,22 @@ function AdminDashboardPage() {
 
   async function handleLogin(e) {
     e.preventDefault();
-    const ok = await loginAdmin(email, password);
-    if (!ok) {
-      toast.error('Access denied');
+    setIsSigningIn(true);
+    setAuthError('');
+
+    const result = await loginAdmin(email, password);
+    if (!result?.ok) {
+      const message = result?.message || 'Access denied';
+      setAuthError(message);
+      toast.error(message);
       setLogs(getLogs());
+      setIsSigningIn(false);
       return;
     }
     setAuthenticated(true);
     setEmail('');
     setPassword('');
+    setIsSigningIn(false);
     refreshDashboard();
     toast.success('Signed in');
   }
@@ -192,6 +202,16 @@ function AdminDashboardPage() {
                       <p className="text-muted-foreground">Authorized operators only.</p>
                     </div>
 
+                    <div className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">
+                      <div className="font-medium text-foreground mb-1">Access note</div>
+                      <p>
+                        If sign-in does not respond, the public admin, api, and health subdomains still need server DNS and SSL wiring.
+                      </p>
+                      <Link to="/roadmap.sh" className="text-primary underline underline-offset-4 mt-2 inline-block">
+                        Open roadmap and backend guide
+                      </Link>
+                    </div>
+
                     <form onSubmit={handleLogin} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="admin-email">Email</Label>
@@ -201,7 +221,14 @@ function AdminDashboardPage() {
                         <Label htmlFor="admin-password">Password</Label>
                         <Input id="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" autoComplete="current-password" />
                       </div>
-                      <Button type="submit" className="w-full">Sign In</Button>
+                      {authError && (
+                        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                          {authError}
+                        </div>
+                      )}
+                      <Button type="submit" className="w-full" disabled={isSigningIn}>
+                        {isSigningIn ? 'Signing in...' : 'Sign In'}
+                      </Button>
                     </form>
                   </CardContent>
                 </Card>

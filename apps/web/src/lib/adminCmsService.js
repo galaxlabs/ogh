@@ -134,22 +134,30 @@ export async function loginAdmin(email, password) {
       body: JSON.stringify({ email, password }),
     });
 
-    if (!response.ok) {
-      appendLog('error', 'Failed admin login attempt');
-      return false;
+    let data = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
     }
 
-    const data = await response.json();
+    if (!response.ok) {
+      const message = data?.message || 'Access denied. The backend admin service may not be publicly reachable yet.';
+      appendLog('error', 'Failed admin login attempt', { message });
+      return { ok: false, message };
+    }
+
     write(STORAGE_KEYS.auth, {
       email: data.email,
       token: data.token,
       loggedInAt: new Date().toISOString(),
     });
     appendLog('info', 'Admin login successful');
-    return true;
-  } catch {
-    appendLog('error', 'Admin API login request failed');
-    return false;
+    return { ok: true, email: data.email };
+  } catch (error) {
+    const message = 'Admin API is not reachable yet. Point the admin, api, and health subdomains to your server and enable SSL.';
+    appendLog('error', 'Admin API login request failed', { error: error.message });
+    return { ok: false, message };
   }
 }
 
@@ -330,7 +338,7 @@ export function restoreBackupPayload(payload) {
   }
   appendLog('warn', 'Backup restored from dashboard');
 
-  fetch(`${ADMIN_API_URL}/api/restore`, {
+  requestAdminApi('/api/restore', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(payload),
