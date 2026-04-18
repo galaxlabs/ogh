@@ -667,7 +667,8 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
     } = req.body || {};
 
     const normalizedTitle = String(title || source_domain || 'Imported post').trim();
-    const normalizedUrl = String(url || '').trim();
+    const rawUrl = String(url || '').trim();
+    const normalizedUrl = rawUrl && !/^https?:\/\//i.test(rawUrl) ? `https://${rawUrl.replace(/^\/+/, '')}` : rawUrl;
     const metadata = await analyzeContentMetadata({
       title: normalizedTitle,
       url: normalizedUrl,

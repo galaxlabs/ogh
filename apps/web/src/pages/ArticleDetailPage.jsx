@@ -21,7 +21,7 @@ import { explainArticle, translateArticle } from '@/lib/aiReaderService.js';
 
 function renderInlineContent(text = '') {
   const value = String(text || '');
-  const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)|(https?:\/\/[^\s]+)|(\/articles\?[^\s]+)/g;
+  const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)|(https?:\/\/[^\s]+)|((?:www\.)?[a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s]*)?)|(\/articles\?[^\s]+)/gi;
   const nodes = [];
   let lastIndex = 0;
   let match;
@@ -31,8 +31,9 @@ function renderInlineContent(text = '') {
       nodes.push(value.slice(lastIndex, match.index));
     }
 
-    const href = match[2] || match[3] || match[4] || '';
-    const label = match[1] || href.replace(/^https?:\/\/(www\.)?/, '');
+    const rawHref = match[2] || match[3] || match[4] || match[5] || '';
+    const href = rawHref.startsWith('http') || rawHref.startsWith('/') ? rawHref : `https://${rawHref}`;
+    const label = match[1] || rawHref.replace(/^https?:\/\/(www\.)?/, '');
 
     if (href.startsWith('/')) {
       nodes.push(
