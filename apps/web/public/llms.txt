@@ -1,6 +1,7 @@
 ## Pages
 - [`}](/home): No description available
 - [Downloads | OpenGuideHub](/downloads): Download templates, guides, and CMS starter resources from OpenGuideHub.
+- [roadmap.sh — OpenGuideHub](/roadmap): Platform roadmap, deployment guide, and PocketBase usage overview for OpenGuideHub.
 - [Untitled Page](/about): Learn about OpenGuideHub
 - [Untitled Page](/articles): Browse all articles and guides on OpenGuideHub
 - [Untitled Page](/categories): Browse all categories and topics on OpenGuideHub

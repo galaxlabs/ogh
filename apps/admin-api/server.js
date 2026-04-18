@@ -31,6 +31,7 @@ const serviceState = {
   mysqlUrl: process.env.MYSQL_DATABASE_URL || '',
   adminEmail: process.env.ADMIN_EMAIL || '',
   adminPassword: process.env.ADMIN_PASSWORD || '',
+  jwtSecret: process.env.JWT_SECRET || '',
   openClawPublishToken: process.env.OPENCLAW_PUBLISH_TOKEN || '',
   publicSiteUrl: process.env.PUBLIC_SITE_URL || 'https://openguidehub.org',
   aiProvider: process.env.AI_PROVIDER || 'ollama',
@@ -205,6 +206,43 @@ function readToken(req) {
   return header.startsWith('Bearer ') ? header.slice(7) : '';
 }
 
+function createSignedJwt(payload, expiresInSeconds = 7 * 24 * 60 * 60) {
+  if (!serviceState.jwtSecret) {
+    return crypto.randomUUID();
+  }
+
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const body = Buffer.from(JSON.stringify({
+    ...payload,
+    exp: Math.floor(Date.now() / 1000) + expiresInSeconds,
+  })).toString('base64url');
+  const signature = crypto.createHmac('sha256', serviceState.jwtSecret).update(`${header}.${body}`).digest('base64url');
+  return `${header}.${body}.${signature}`;
+}
+
+function verifySignedJwt(token) {
+  if (!serviceState.jwtSecret) {
+    return null;
+  }
+
+  const [header, body, signature] = String(token || '').split('.');
+  if (!header || !body || !signature) {
+    throw new Error('Malformed token');
+  }
+
+  const expected = crypto.createHmac('sha256', serviceState.jwtSecret).update(`${header}.${body}`).digest('base64url');
+  if (expected !== signature) {
+    throw new Error('Invalid token signature');
+  }
+
+  const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+  if (payload?.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+    throw new Error('Token expired');
+  }
+
+  return payload;
+}
+
 function checkRateLimit(email) {
   const now = Date.now();
   const record = loginAttempts.get(email) || { count: 0, firstAttemptAt: now };
@@ -230,9 +268,24 @@ function registerFailedAttempt(email) {
 
 function requireAuth(req, res, next) {
   const token = readToken(req);
-  if (!token || !sessions.has(token)) {
+
+  if (!token) {
     return res.status(401).json({ ok: false, message: 'Unauthorized' });
   }
+
+  if (serviceState.jwtSecret) {
+    try {
+      req.adminSession = verifySignedJwt(token);
+      return next();
+    } catch (error) {
+      return res.status(401).json({ ok: false, message: error.message || 'Unauthorized' });
+    }
+  }
+
+  if (!sessions.has(token)) {
+    return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  }
+
   req.adminSession = sessions.get(token);
   next();
 }
@@ -334,10 +387,13 @@ app.post('/api/auth/login', (req, res) => {
 
   loginAttempts.delete(email);
 
-  const token = crypto.randomUUID();
-  const session = { email, createdAt: new Date().toISOString() };
+  const session = { email, createdAt: new Date().toISOString(), role: 'admin' };
+  const token = serviceState.jwtSecret
+    ? createSignedJwt(session)
+    : crypto.randomUUID();
+
   sessions.set(token, session);
-  log('info', 'Admin login successful', { email });
+  log('info', 'Admin login successful', { email, authMode: serviceState.jwtSecret ? 'jwt' : 'session' });
   return res.json({ ok: true, token, email });
 });
 

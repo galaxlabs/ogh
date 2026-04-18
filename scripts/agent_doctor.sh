@@ -18,6 +18,11 @@ printf '\n\n-- PocketBase dashboard --\n'
 printf '\n-- Public site --\n'
 (curl -I --max-time 10 https://openguidehub.org 2>/dev/null | head || echo 'Public site unreachable')
 
+printf '\n-- Ollama --\n'
+(command -v ollama >/dev/null 2>&1 && echo 'ollama: installed' || echo 'ollama: missing')
+(systemctl is-active ollama 2>/dev/null || true)
+(curl -s http://127.0.0.1:11434/api/tags 2>/dev/null || echo 'No local models detected')
+
 printf '\n-- Notes --\n'
 printf '%s\n' 'Website admin dashboard uses the Admin API credentials.'
 printf '%s\n' 'PocketBase superuser uses PB_SUPERUSER_EMAIL and PB_SUPERUSER_PASSWORD.'
