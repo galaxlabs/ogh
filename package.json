@@ -12,7 +12,8 @@
     "admin:api": "npm run dev --prefix apps/admin-api",
     "backend:start": "sh ./scripts/start_backend_services.sh",
     "backend:stop": "sh ./scripts/stop_backend_services.sh",
-    "backend:status": "sh ./scripts/status_backend_services.sh"
+    "backend:status": "sh ./scripts/status_backend_services.sh",
+    "doctor": "sh ./scripts/agent_doctor.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
