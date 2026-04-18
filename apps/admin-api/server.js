@@ -287,7 +287,7 @@ async function analyzeContentMetadata({ title = '', url = '', note = '', formatt
 }
 
 async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE' }) {
-  const sourceLine = url ? `\n\nOriginal article: Read here ${url}` : '';
+  const sourceLine = url ? `\n\nRead full original article here: ${url}` : '';
   const baseText = String(formattedText || [title, note].filter(Boolean).join('\n\n')).trim();
   const fallback = `${baseText}${sourceLine}`.trim();
 
@@ -421,6 +421,22 @@ function requireOpenClawToken(req, res, next) {
   next();
 }
 
+function createGeneratedCover(title = 'OpenGuideHub', category = 'Technology') {
+  const safeTitle = String(title || 'OpenGuideHub').slice(0, 60);
+  const safeCategory = String(category || 'Technology').slice(0, 28);
+  const palette = [
+    ['#0f172a', '#2563eb'],
+    ['#1f2937', '#7c3aed'],
+    ['#052e16', '#16a34a'],
+    ['#3f1d2e', '#db2777'],
+    ['#172554', '#0891b2'],
+  ];
+  const seed = (safeTitle + safeCategory).split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  const [bg1, bg2] = palette[seed % palette.length];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="${bg1}"/><stop offset="100%" stop-color="${bg2}"/></linearGradient></defs><rect width="1200" height="630" fill="url(#g)" rx="36"/><circle cx="1040" cy="120" r="90" fill="rgba(255,255,255,0.08)"/><circle cx="160" cy="520" r="120" fill="rgba(255,255,255,0.06)"/><text x="80" y="140" fill="#cbd5e1" font-size="28" font-family="Arial, Helvetica, sans-serif">OpenGuideHub</text><text x="80" y="230" fill="#ffffff" font-size="54" font-weight="700" font-family="Arial, Helvetica, sans-serif">${safeTitle.replace(/[<&>]/g, '')}</text><text x="80" y="305" fill="#e2e8f0" font-size="30" font-family="Arial, Helvetica, sans-serif">${safeCategory.replace(/[<&>]/g, '')}</text></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
 function mapPublicPost(post) {
   const content = String(post.content || '');
   return {
@@ -429,7 +445,7 @@ function mapPublicPost(post) {
     title: post.title,
     excerpt: post.excerpt || '',
     content,
-    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
+    image: post.image || createGeneratedCover(post.title, post.category || 'Technology'),
     category: post.category || 'Imported',
     tags: String(post.tags || '').split(',').map((tag) => tag.trim()).filter(Boolean),
     readingTime: Math.max(1, Math.ceil(content.split(/\s+/).filter(Boolean).length / 200)),

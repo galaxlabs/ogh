@@ -10,6 +10,7 @@ import Footer from '@/components/Footer.jsx';
 import FeaturedArticleCard from '@/components/FeaturedArticleCard.jsx';
 import CategoryCard from '@/components/CategoryCard.jsx';
 import ArticleCard from '@/components/ArticleCard.jsx';
+import SearchBar from '@/components/SearchBar.jsx';
 import TrendingCard from '@/components/TrendingCard.jsx';
 import TutorialCard from '@/components/TutorialCard.jsx';
 import ReviewCard from '@/components/ReviewCard.jsx';
@@ -17,11 +18,13 @@ import NewsletterSignup from '@/components/NewsletterSignup.jsx';
 import { articles, categories } from '@/data/articles.js';
 import { getTranslation } from '@/data/i18n.js';
 import { fetchPublicPosts, mergeArticles } from '@/lib/publicContentService.js';
-import { buildCategoryStats } from '@/lib/categoryUtils.js';
+import { buildCategoryStats, slugifyCategory } from '@/lib/categoryUtils.js';
 
 function HomePage() {
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [allArticles, setAllArticles] = useState(articles);
+  const [discoverQuery, setDiscoverQuery] = useState('');
+  const [activeLane, setActiveLane] = useState('all');
   const translations = getTranslation(currentLanguage);
 
   useEffect(() => {
@@ -39,12 +42,28 @@ function HomePage() {
   };
 
   const featuredArticles = allArticles.filter(a => a.featured);
-  const latestArticles = allArticles.slice(0, 6);
-  const trendingArticles = allArticles.slice(0, 5);
-  const tutorialArticles = allArticles.filter(a => a.category.includes('Tutorial') || a.category === 'Programming').slice(0, 3);
-  const reviewArticles = allArticles.filter(a => a.category.includes('Review')).slice(0, 3);
-  const scienceArticles = allArticles.filter(a => ['Physics', 'Chemistry', 'Biology'].includes(a.category)).slice(0, 4);
+  const latestArticles = allArticles.slice(0, 4);
+  const trendingArticles = allArticles.slice(0, 4);
+  const tutorialArticles = allArticles.filter(a => a.category.includes('Tutorial') || a.category === 'Programming').slice(0, 2);
+  const reviewArticles = allArticles.filter(a => a.category.includes('Review')).slice(0, 2);
+  const scienceArticles = allArticles.filter(a => ['Physics', 'Chemistry', 'Biology'].includes(a.category)).slice(0, 2);
   const categoryStats = buildCategoryStats(categories, allArticles);
+  const discoveryLanes = [
+    { label: 'All', value: 'all' },
+    { label: 'AI', value: 'artificial-intelligence' },
+    { label: 'AI Tools', value: 'ai-tools' },
+    { label: 'FOSS', value: 'foss-updates' },
+    { label: 'Tutorials', value: 'tutorials' },
+    { label: 'Security', value: 'cybersecurity' },
+  ];
+  const quickDiscovery = allArticles
+    .filter((article) => {
+      const matchesLane = activeLane === 'all' || slugifyCategory(article.category) === activeLane;
+      const haystack = `${article.title} ${article.excerpt} ${article.category} ${(article.tags || []).join(' ')}`.toLowerCase();
+      const matchesQuery = !discoverQuery.trim() || haystack.includes(discoverQuery.trim().toLowerCase());
+      return matchesLane && matchesQuery;
+    })
+    .slice(0, 4);
   const googleSiteVerification = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION || '';
   const aiFocusAreas = [
     {
@@ -144,6 +163,41 @@ function HomePage() {
                   </Link>
                 </div>
               </motion.div>
+            </div>
+          </section>
+
+          <section className="py-12 border-b bg-background">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="rounded-3xl border bg-muted/30 p-6 md:p-8">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-2xl md:text-3xl font-bold mb-2">Find the right post fast</h2>
+                    <p className="text-muted-foreground">Pick a theme, search once, and jump to the most relevant guides without deep scrolling.</p>
+                  </div>
+                  <div className="w-full lg:w-[360px]">
+                    <SearchBar value={discoverQuery} onChange={setDiscoverQuery} placeholder="Search AI, FOSS, tools, security..." />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {discoveryLanes.map((lane) => (
+                    <Button
+                      key={lane.value}
+                      variant={activeLane === lane.value ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setActiveLane(lane.value)}
+                    >
+                      {lane.label}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
+                  {quickDiscovery.map((article, index) => (
+                    <ArticleCard key={article.id} article={article} index={index} />
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
 

@@ -36,6 +36,15 @@ function FeaturedArticleCard({ article, large = false }) {
           <p className={`text-muted-foreground line-clamp-2 ${large ? 'text-base' : 'text-sm'}`}>
             {article.excerpt}
           </p>
+          {Array.isArray(article.tags) && article.tags.length > 0 ? (
+            <div className="flex flex-wrap gap-1 mt-4">
+              {article.tags.slice(0, 3).map((tag) => (
+                <Badge key={tag} variant="outline" className="text-[10px]">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
           <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
             <span className="font-medium">{article.author.name}</span>
             <span>•</span>

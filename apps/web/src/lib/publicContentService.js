@@ -1,4 +1,9 @@
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80';
+function buildGeneratedCover(title = 'OpenGuideHub', category = 'Technology') {
+  const safeTitle = String(title || 'OpenGuideHub').slice(0, 56);
+  const safeCategory = String(category || 'Technology').slice(0, 24);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#2563eb"/></linearGradient></defs><rect width="1200" height="630" fill="url(#g)"/><text x="72" y="130" fill="#cbd5e1" font-size="28" font-family="Arial, Helvetica, sans-serif">OpenGuideHub</text><text x="72" y="220" fill="#fff" font-size="52" font-weight="700" font-family="Arial, Helvetica, sans-serif">${safeTitle.replace(/[<&>]/g, '')}</text><text x="72" y="290" fill="#e2e8f0" font-size="28" font-family="Arial, Helvetica, sans-serif">${safeCategory.replace(/[<&>]/g, '')}</text></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
 
 function normalizeBase(base = '') {
   return String(base || '').trim().replace(/\/+$/, '');
@@ -34,7 +39,7 @@ export function normalizePublicArticle(article) {
     title: article?.title || 'Untitled Post',
     excerpt: article?.excerpt || 'Imported content from the publishing pipeline.',
     content,
-    image: article?.image || FALLBACK_IMAGE,
+    image: article?.image || buildGeneratedCover(article?.title, article?.category || 'Imported'),
     category: article?.category || 'Imported',
     tags: Array.isArray(article?.tags)
       ? article.tags

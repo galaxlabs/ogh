@@ -36,9 +36,18 @@ function ArticleCard({ article, index = 0 }) {
               {article.title}
             </h3>
           </Link>
-          <p className="text-sm text-muted-foreground line-clamp-3 flex-1 mb-4">
+          <p className="text-sm text-muted-foreground line-clamp-3 flex-1 mb-3">
             {article.excerpt}
           </p>
+          {Array.isArray(article.tags) && article.tags.length > 0 ? (
+            <div className="flex flex-wrap gap-1 mb-4">
+              {article.tags.slice(0, 2).map((tag) => (
+                <Badge key={tag} variant="outline" className="text-[10px]">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
           <div className="flex items-center justify-between text-xs text-muted-foreground mt-auto">
             <span>{new Date(article.publishDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
           </div>
