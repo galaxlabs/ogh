@@ -45,6 +45,7 @@ function HomePage() {
   const reviewArticles = allArticles.filter(a => a.category.includes('Review')).slice(0, 3);
   const scienceArticles = allArticles.filter(a => ['Physics', 'Chemistry', 'Biology'].includes(a.category)).slice(0, 4);
   const categoryStats = buildCategoryStats(categories, allArticles);
+  const googleSiteVerification = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION || '';
   const aiFocusAreas = [
     {
       title: 'AI Agents',
@@ -64,7 +65,7 @@ function HomePage() {
     },
   ];
   const siteUrl = 'https://openguidehub.org';
-  const seoKeywords = ['OpenGuideHub', 'AI guides', 'AI tools', 'FOSS updates', 'science tutorials', 'technology articles', 'multilingual learning'].join(', ');
+  const seoKeywords = ['OpenGuideHub', 'AI guides', 'AI tools', 'FOSS updates', 'science tutorials', 'technology articles', 'multilingual learning', 'article translator', 'Urdu translation', 'Arabic translation', 'research search'].join(', ');
   const websiteSchema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -91,6 +92,7 @@ function HomePage() {
         <meta property="og:url" content={siteUrl} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="keywords" content={seoKeywords} />
+        {googleSiteVerification ? <meta name="google-site-verification" content={googleSiteVerification} /> : null}
         <script type="application/ld+json">{JSON.stringify(websiteSchema)}</script>
       </Helmet>
 

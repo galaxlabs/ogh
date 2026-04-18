@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import Header from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
+import { useSearchParams } from 'react-router-dom';
 import Breadcrumb from '@/components/Breadcrumb.jsx';
 import ArticleCard from '@/components/ArticleCard.jsx';
 import SearchBar from '@/components/SearchBar.jsx';
@@ -15,8 +16,9 @@ import { buildCategoryStats, slugifyCategory } from '@/lib/categoryUtils.js';
 
 function ArticlesPage() {
   const [currentLanguage, setCurrentLanguage] = useState('en');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'all');
   const [allArticles, setAllArticles] = useState(articles);
   const translations = getTranslation(currentLanguage);
 
@@ -32,6 +34,33 @@ function ArticlesPage() {
   const handleLanguageChange = (lang) => {
     setCurrentLanguage(lang);
     localStorage.setItem('language', lang);
+  };
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('q') || '');
+    setSelectedCategory(searchParams.get('category') || 'all');
+  }, [searchParams]);
+
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    const next = new URLSearchParams(searchParams);
+    if (value.trim()) {
+      next.set('q', value);
+    } else {
+      next.delete('q');
+    }
+    setSearchParams(next, { replace: true });
+  };
+
+  const handleCategoryChange = (value) => {
+    setSelectedCategory(value);
+    const next = new URLSearchParams(searchParams);
+    if (value && value !== 'all') {
+      next.set('category', value);
+    } else {
+      next.delete('category');
+    }
+    setSearchParams(next, { replace: true });
   };
 
   const categoryStats = buildCategoryStats(categories, allArticles);
@@ -93,13 +122,13 @@ function ArticlesPage() {
                 <div className="space-y-4">
                   <SearchBar
                     value={searchQuery}
-                    onChange={setSearchQuery}
+                    onChange={handleSearchChange}
                     placeholder={translations.common.search}
                   />
                   <CategoryFilter
                     categories={categoryStats.slice(0, 12)}
                     selectedCategory={selectedCategory}
-                    onCategoryChange={setSelectedCategory}
+                    onCategoryChange={handleCategoryChange}
                   />
                 </div>
 

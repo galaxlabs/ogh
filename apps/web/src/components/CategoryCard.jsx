@@ -79,7 +79,7 @@ function CategoryCard({ category, index = 0 }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.03 }}
     >
-      <Link to={`/categories#${category.slug}`}>
+      <Link to={`/articles?category=${encodeURIComponent(category.slug || category.name)}`}>
         <Card className="hover:shadow-lg transition-all duration-200 hover:-translate-y-1 h-full group">
           <CardContent className="p-6">
             <div className="flex items-start gap-4">

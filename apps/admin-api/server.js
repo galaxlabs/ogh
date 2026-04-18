@@ -36,9 +36,12 @@ const serviceState = {
   openClawPublishToken: process.env.OPENCLAW_PUBLISH_TOKEN || '',
   publicSiteUrl: process.env.PUBLIC_SITE_URL || 'https://openguidehub.org',
   aiRewriteOnPublish: String(process.env.AI_REWRITE_ON_PUBLISH || '1') === '1',
+  multiAgentPipeline: String(process.env.ENABLE_MULTI_AGENT_PIPELINE || '1') === '1',
   aiProvider: process.env.AI_PROVIDER || 'ollama',
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434',
   ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:8b',
+  ollamaAnalyzerModel: process.env.OLLAMA_ANALYZER_MODEL || process.env.OLLAMA_HERMES_MODEL || 'hermes3:8b',
+  ollamaRewriterModel: process.env.OLLAMA_REWRITER_MODEL || process.env.OLLAMA_MODEL || 'qwen3:8b',
   ollamaHermesModel: process.env.OLLAMA_HERMES_MODEL || 'hermes3:8b',
   openRouterApiKey: process.env.OPENROUTER_API_KEY || '',
   openRouterModel: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat-v3-0324',
@@ -119,7 +122,7 @@ function getAiProviderOrder() {
   return [...new Set(preferred)];
 }
 
-async function callOllamaChat(messages, temperature = 0.2) {
+async function callOllamaChat(messages, temperature = 0.2, model = serviceState.ollamaModel) {
   const response = await fetch(`${serviceState.ollamaBaseUrl}/api/chat`, {
     method: 'POST',
     headers: {
@@ -127,7 +130,7 @@ async function callOllamaChat(messages, temperature = 0.2) {
       Accept: 'application/json',
     },
     body: JSON.stringify({
-      model: serviceState.ollamaModel,
+      model,
       messages,
       stream: false,
       options: { temperature },
@@ -175,7 +178,7 @@ async function callOpenRouterChat(messages, temperature = 0.2, maxTokens = 1200)
   };
 }
 
-async function generateAiText({ systemPrompt, userPrompt, temperature = 0.2, maxTokens = 1200 }) {
+async function generateAiText({ systemPrompt, userPrompt, temperature = 0.2, maxTokens = 1200, model }) {
   const messages = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt },
@@ -186,7 +189,7 @@ async function generateAiText({ systemPrompt, userPrompt, temperature = 0.2, max
   for (const provider of getAiProviderOrder()) {
     try {
       if (provider === 'ollama' && serviceState.ollamaBaseUrl && serviceState.ollamaModel) {
-        return await callOllamaChat(messages, temperature);
+        return await callOllamaChat(messages, temperature, model || serviceState.ollamaModel);
       }
 
       if (provider === 'openrouter' && serviceState.openRouterApiKey) {
@@ -201,6 +204,21 @@ async function generateAiText({ systemPrompt, userPrompt, temperature = 0.2, max
   throw new Error(errors[0] || 'No AI provider is configured yet');
 }
 
+const DEFAULT_CONTENT_CATEGORIES = [
+  'Artificial Intelligence',
+  'AI Agents',
+  'AI Tools',
+  'FOSS Updates',
+  'Cybersecurity',
+  'Tutorials',
+  'Programming',
+  'Open Source',
+  'Science',
+  'Technology',
+  'Repo Reviews',
+  'Article',
+];
+
 function buildFallbackExplanation(title = '', content = '', question = '') {
   const cleaned = String(content || '').replace(/\s+/g, ' ').trim();
   const preview = cleaned.split(/(?<=[.!?])\s+/).slice(0, 3).join(' ');
@@ -210,6 +228,62 @@ function buildFallbackExplanation(title = '', content = '', question = '') {
   }
 
   return `Quick overview: ${preview || String(title || 'This post is ready for AI explanation once the model is connected.')}`;
+}
+
+function extractJsonObject(text = '') {
+  const match = String(text || '').match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
+async function analyzeContentMetadata({ title = '', url = '', note = '', formattedText = '', fallbackCategory = 'Technology', sourceDomain = '' }) {
+  const fallback = {
+    category: String(fallbackCategory || 'Technology'),
+    excerpt: String(note || '').trim().slice(0, 220) || String(title || '').trim(),
+    tags: [fallbackCategory, sourceDomain].filter(Boolean),
+  };
+
+  if (!serviceState.multiAgentPipeline) {
+    return fallback;
+  }
+
+  const sample = String(formattedText || note || title || '').slice(0, 2400);
+  if (!sample) {
+    return fallback;
+  }
+
+  try {
+    const result = await Promise.race([
+      generateAiText({
+        systemPrompt: `You are the OpenGuideHub analyzer+categorizor agent. Classify the content into exactly one category from: ${DEFAULT_CONTENT_CATEGORIES.join(', ')}. Return strict JSON with keys: category, excerpt, tags. Keep excerpt under 180 characters and tags as an array of 3 to 6 short phrases.`,
+        userPrompt: `Title: ${title}\nSource: ${url || sourceDomain || 'N/A'}\n\nContent sample:\n${sample}`,
+        temperature: 0.1,
+        maxTokens: 220,
+        model: serviceState.ollamaAnalyzerModel,
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('AI metadata timeout')), 3500)),
+    ]);
+
+    const parsed = extractJsonObject(result?.content || '');
+    if (!parsed) {
+      return fallback;
+    }
+
+    const category = DEFAULT_CONTENT_CATEGORIES.includes(parsed.category) ? parsed.category : fallback.category;
+    const excerpt = String(parsed.excerpt || fallback.excerpt).trim().slice(0, 220) || fallback.excerpt;
+    const tags = Array.isArray(parsed.tags)
+      ? parsed.tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 6)
+      : fallback.tags;
+
+    return { category, excerpt, tags };
+  } catch (error) {
+    log('warn', 'AI metadata analysis failed, using fallback metadata', { error: error.message, title });
+    return fallback;
+  }
 }
 
 async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE' }) {
@@ -232,6 +306,7 @@ async function buildPublishedArticleContent({ title = '', url = '', note = '', f
         userPrompt: `Title: ${title}\nCategory: ${category}\nSource URL: ${url || 'N/A'}\n\nSource material:\n${baseText}\n\nFinish with: ${sourceLine.trim() || 'No backlink line needed.'}`,
         temperature: 0.3,
         maxTokens: 650,
+        model: serviceState.ollamaRewriterModel,
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('AI rewrite timeout')), 6000)),
     ]);
@@ -519,12 +594,20 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
 
     const normalizedTitle = String(title || source_domain || 'Imported post').trim();
     const normalizedUrl = String(url || '').trim();
+    const metadata = await analyzeContentMetadata({
+      title: normalizedTitle,
+      url: normalizedUrl,
+      note: String(note || '').trim(),
+      formattedText: String(formatted_text || ''),
+      fallbackCategory: String(category || 'Technology'),
+      sourceDomain: String(source_domain || ''),
+    });
     const normalizedContent = await buildPublishedArticleContent({
       title: normalizedTitle,
       url: normalizedUrl,
       note: String(note || '').trim(),
       formattedText: String(formatted_text || ''),
-      category: String(category || 'LINK'),
+      category: metadata.category,
     });
 
     if (!normalizedTitle && !normalizedUrl && !normalizedContent) {
@@ -539,28 +622,28 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
       where: { slug },
       update: {
         title: normalizedTitle,
-        excerpt: String(note || '').trim().slice(0, 500) || null,
+        excerpt: String(metadata.excerpt || note || '').trim().slice(0, 500) || null,
         content: normalizedContent,
         status: 'published',
         author: 'OpenClaw Agent',
-        category: String(category || 'LINK'),
-        tags: [category, source_domain].filter(Boolean).join(','),
+        category: metadata.category,
+        tags: metadata.tags.filter(Boolean).join(','),
       },
       create: {
         slug,
         title: normalizedTitle,
-        excerpt: String(note || '').trim().slice(0, 500) || null,
+        excerpt: String(metadata.excerpt || note || '').trim().slice(0, 500) || null,
         content: normalizedContent,
         status: 'published',
         author: 'OpenClaw Agent',
-        category: String(category || 'LINK'),
-        tags: [category, source_domain].filter(Boolean).join(','),
+        category: metadata.category,
+        tags: metadata.tags.filter(Boolean).join(','),
       },
     });
 
     log('info', 'OpenClaw content published', {
       slug,
-      category,
+      category: metadata.category,
       itemId: item_id,
     });
 

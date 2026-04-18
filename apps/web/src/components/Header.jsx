@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, Search } from 'lucide-react';
@@ -9,6 +9,7 @@ import SearchBar from './SearchBar.jsx';
 
 function Header({ currentLanguage, onLanguageChange, translations }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -27,6 +28,12 @@ function Header({ currentLanguage, onLanguageChange, translations }) {
   ];
 
   const isActive = (path) => location.pathname === path;
+  const submitSearch = () => {
+    const q = searchQuery.trim();
+    if (!q) return;
+    navigate(`/articles?q=${encodeURIComponent(q)}`);
+    setIsOpen(false);
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -64,11 +71,12 @@ function Header({ currentLanguage, onLanguageChange, translations }) {
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}
+                onSubmit={submitSearch}
                 placeholder={translations.common.search}
               />
             </div>
 
-            <Button variant="ghost" size="sm" className="md:hidden">
+            <Button variant="ghost" size="sm" className="md:hidden" onClick={submitSearch}>
               <Search className="h-5 w-5" />
             </Button>
 
