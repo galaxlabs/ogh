@@ -1,8 +1,19 @@
+function sanitizeCoverText(value = '', maxLength = 56) {
+  return Array.from(String(value || '').replace(/[\uD800-\uDFFF]/g, ''))
+    .join('')
+    .replace(/[<&>]/g, '')
+    .slice(0, maxLength) || 'OpenGuideHub';
+}
+
 function buildGeneratedCover(title = 'OpenGuideHub', category = 'Technology') {
-  const safeTitle = String(title || 'OpenGuideHub').slice(0, 56);
-  const safeCategory = String(category || 'Technology').slice(0, 24);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#2563eb"/></linearGradient></defs><rect width="1200" height="630" fill="url(#g)"/><text x="72" y="130" fill="#cbd5e1" font-size="28" font-family="Arial, Helvetica, sans-serif">OpenGuideHub</text><text x="72" y="220" fill="#fff" font-size="52" font-weight="700" font-family="Arial, Helvetica, sans-serif">${safeTitle.replace(/[<&>]/g, '')}</text><text x="72" y="290" fill="#e2e8f0" font-size="28" font-family="Arial, Helvetica, sans-serif">${safeCategory.replace(/[<&>]/g, '')}</text></svg>`;
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  const safeTitle = sanitizeCoverText(title, 56);
+  const safeCategory = sanitizeCoverText(category, 24);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#2563eb"/></linearGradient></defs><rect width="1200" height="630" fill="url(#g)"/><text x="72" y="130" fill="#cbd5e1" font-size="28" font-family="Arial, Helvetica, sans-serif">OpenGuideHub</text><text x="72" y="220" fill="#fff" font-size="52" font-weight="700" font-family="Arial, Helvetica, sans-serif">${safeTitle}</text><text x="72" y="290" fill="#e2e8f0" font-size="28" font-family="Arial, Helvetica, sans-serif">${safeCategory}</text></svg>`;
+  try {
+    return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+  } catch {
+    return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjYzMCI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjMwIiBmaWxsPSIjMGYxNzJhIi8+PHRleHQgeD0iNzAiIHk9IjE0MCIgZmlsbD0iI2ZmZiIgZm9udC1zaXplPSI1MiI+T3Blbkd1aWRlSHViPC90ZXh0Pjwvc3ZnPg==';
+  }
 }
 
 function normalizeBase(base = '') {
