@@ -30,12 +30,11 @@ function getCandidateBases() {
 
   if (typeof window !== 'undefined') {
     const { hostname, origin } = window.location;
-    bases.push(normalizeBase(origin));
 
     if (/localhost|127\.0\.0\.1/.test(hostname)) {
-      bases.push('http://127.0.0.1:3100', '');
+      bases.push(normalizeBase(origin), 'http://127.0.0.1:3100', '');
     } else {
-      bases.push('https://api.openguidehub.org');
+      bases.push('https://api.openguidehub.org', normalizeBase(origin));
     }
   }
 
