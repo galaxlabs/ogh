@@ -31,6 +31,7 @@ const serviceState = {
   mysqlUrl: process.env.MYSQL_DATABASE_URL || '',
   adminEmail: process.env.ADMIN_EMAIL || '',
   adminPassword: process.env.ADMIN_PASSWORD || '',
+  adminEmailAliases: String(process.env.ADMIN_EMAIL_ALIASES || 'admin@openguidehub.org,owner@openguidehub.org,admin').split(',').map((value) => value.trim()).filter(Boolean),
   jwtSecret: process.env.JWT_SECRET || '',
   openClawPublishToken: process.env.OPENCLAW_PUBLISH_TOKEN || '',
   publicSiteUrl: process.env.PUBLIC_SITE_URL || 'https://openguidehub.org',
@@ -38,6 +39,7 @@ const serviceState = {
   aiProvider: process.env.AI_PROVIDER || 'ollama',
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434',
   ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:8b',
+  ollamaHermesModel: process.env.OLLAMA_HERMES_MODEL || 'hermes3:8b',
   openRouterApiKey: process.env.OPENROUTER_API_KEY || '',
   openRouterModel: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat-v3-0324',
 };
@@ -48,6 +50,14 @@ let prismaState = {
   connected: false,
   message: serviceState.databaseUrl ? 'Pending connection test' : 'DATABASE_URL not configured',
 };
+
+function getAllowedAdminEmails() {
+  return new Set(
+    [serviceState.adminEmail, ...(serviceState.adminEmailAliases || [])]
+      .map((value) => String(value || '').trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
 
 function log(level, message, meta = {}) {
   const entry = {
@@ -400,9 +410,10 @@ app.get('/api/public/posts/:slug', async (req, res) => {
 
 app.post('/api/auth/login', (req, res) => {
   const { email = '', password = '' } = req.body || {};
+  const normalizedEmail = String(email || '').trim().toLowerCase();
 
-  if (checkRateLimit(email)) {
-    log('warn', 'Blocked admin login attempt due to rate limit', { email });
+  if (checkRateLimit(normalizedEmail)) {
+    log('warn', 'Blocked admin login attempt due to rate limit', { email: normalizedEmail });
     return res.status(429).json({ ok: false, message: 'Too many failed attempts. Try again later.' });
   }
 
@@ -411,22 +422,22 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(503).json({ ok: false, message: 'Admin credentials are not configured on the server' });
   }
 
-  if (email !== serviceState.adminEmail || password !== serviceState.adminPassword) {
-    registerFailedAttempt(email);
-    log('warn', 'Failed admin login attempt', { email });
+  if (!getAllowedAdminEmails().has(normalizedEmail) || password !== serviceState.adminPassword) {
+    registerFailedAttempt(normalizedEmail);
+    log('warn', 'Failed admin login attempt', { email: normalizedEmail });
     return res.status(401).json({ ok: false, message: 'Invalid credentials' });
   }
 
-  loginAttempts.delete(email);
+  loginAttempts.delete(normalizedEmail);
 
-  const session = { email, createdAt: new Date().toISOString(), role: 'admin' };
+  const session = { email: normalizedEmail, createdAt: new Date().toISOString(), role: 'admin' };
   const token = serviceState.jwtSecret
     ? createSignedJwt(session)
     : crypto.randomUUID();
 
   sessions.set(token, session);
-  log('info', 'Admin login successful', { email, authMode: serviceState.jwtSecret ? 'jwt' : 'session' });
-  return res.json({ ok: true, token, email });
+  log('info', 'Admin login successful', { email: normalizedEmail, authMode: serviceState.jwtSecret ? 'jwt' : 'session' });
+  return res.json({ ok: true, token, email: normalizedEmail });
 });
 
 app.post('/api/auth/logout', requireAuth, (req, res) => {
@@ -565,6 +576,7 @@ app.get('/api/ai/status', (req, res) => {
     ok: true,
     primaryProvider: serviceState.aiProvider,
     ollamaConfigured: Boolean(serviceState.ollamaBaseUrl && serviceState.ollamaModel),
+    hermesModel: serviceState.ollamaHermesModel,
     openRouterConfigured: Boolean(serviceState.openRouterApiKey),
     publicSiteUrl: serviceState.publicSiteUrl,
   });

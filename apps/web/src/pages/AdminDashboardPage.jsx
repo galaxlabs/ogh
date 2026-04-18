@@ -205,7 +205,7 @@ function AdminDashboardPage() {
                     <div className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">
                       <div className="font-medium text-foreground mb-1">Access note</div>
                       <p>
-                        If sign-in still fails, the backend server domains may still be waiting for DNS and SSL activation.
+                        Use your operator email and password. If you recently changed credentials, wait a few seconds and try again.
                       </p>
                     </div>
 

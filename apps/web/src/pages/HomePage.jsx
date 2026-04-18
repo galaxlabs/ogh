@@ -63,12 +63,35 @@ function HomePage() {
       text: 'Each article can now be translated on demand into Urdu, Arabic, and other languages.',
     },
   ];
+  const siteUrl = 'https://openguidehub.org';
+  const seoKeywords = ['OpenGuideHub', 'AI guides', 'AI tools', 'FOSS updates', 'science tutorials', 'technology articles', 'multilingual learning'].join(', ');
+  const websiteSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'OpenGuideHub',
+    url: siteUrl,
+    description: translations.home.heroSubtitle,
+    inLanguage: ['en', 'ur', 'ar'],
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${siteUrl}/articles`,
+      'query-input': 'required name=search_term_string',
+    },
+  };
 
   return (
     <>
       <Helmet>
         <title>{`OpenGuideHub - ${translations.home.heroTitle}`}</title>
         <meta name="description" content={translations.home.heroSubtitle} />
+        <link rel="canonical" href={siteUrl} />
+        <meta property="og:title" content={`OpenGuideHub - ${translations.home.heroTitle}`} />
+        <meta property="og:description" content={translations.home.heroSubtitle} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={siteUrl} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="keywords" content={seoKeywords} />
+        <script type="application/ld+json">{JSON.stringify(websiteSchema)}</script>
       </Helmet>
 
       <div className="min-h-screen flex flex-col">

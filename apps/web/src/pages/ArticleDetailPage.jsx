@@ -109,6 +109,27 @@ function ArticleDetailPage() {
   const categoryStats = buildCategoryStats(categories, allArticles);
   const articleUrl = `https://openguidehub.org/articles/${article.slug}`;
   const articleContent = translatedContent || article.content;
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.title,
+    description: article.excerpt,
+    image: [article.image],
+    datePublished: article.publishDate,
+    dateModified: article.publishDate,
+    author: {
+      '@type': 'Person',
+      name: article.author?.name || 'OpenGuideHub',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'OpenGuideHub',
+      url: 'https://openguidehub.org',
+    },
+    mainEntityOfPage: articleUrl,
+    articleSection: article.category,
+    keywords: [article.category, ...(article.tags || [])].join(', '),
+  };
 
   return (
     <>
@@ -123,6 +144,7 @@ function ArticleDetailPage() {
         <meta property="og:image" content={article.image} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="keywords" content={[article.category, ...(article.tags || [])].join(', ')} />
+        <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
       </Helmet>
 
       <div className="min-h-screen flex flex-col">

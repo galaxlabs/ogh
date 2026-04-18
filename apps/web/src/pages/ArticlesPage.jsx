@@ -46,12 +46,28 @@ function ArticlesPage() {
   const sortedArticles = [...filteredArticles].sort((a, b) => 
     new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime()
   );
+  const pageUrl = 'https://openguidehub.org/articles';
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'OpenGuideHub Articles',
+    url: pageUrl,
+    description: 'Browse all articles and guides on OpenGuideHub',
+    about: categoryStats.slice(0, 12).map((category) => category.name),
+  };
 
   return (
     <>
       <Helmet>
         <title>{`Articles - OpenGuideHub`}</title>
         <meta name="description" content="Browse all articles and guides on OpenGuideHub" />
+        <link rel="canonical" href={pageUrl} />
+        <meta property="og:title" content="Articles - OpenGuideHub" />
+        <meta property="og:description" content="Browse all articles and guides on OpenGuideHub" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={pageUrl} />
+        <meta name="keywords" content={categoryStats.map((category) => category.name).slice(0, 12).join(', ')} />
+        <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
       </Helmet>
 
       <div className="min-h-screen flex flex-col">

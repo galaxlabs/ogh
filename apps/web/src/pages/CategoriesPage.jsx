@@ -37,12 +37,28 @@ function CategoriesPage() {
     category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     category.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const pageUrl = 'https://openguidehub.org/categories';
+  const categorySchema = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'OpenGuideHub Categories',
+    url: pageUrl,
+    description: 'Browse all categories and topics on OpenGuideHub',
+    keywords: filteredCategories.map((category) => category.name).join(', '),
+  };
 
   return (
     <>
       <Helmet>
         <title>{`Categories - OpenGuideHub`}</title>
         <meta name="description" content="Browse all categories and topics on OpenGuideHub" />
+        <link rel="canonical" href={pageUrl} />
+        <meta property="og:title" content="Categories - OpenGuideHub" />
+        <meta property="og:description" content="Browse all categories and topics on OpenGuideHub" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={pageUrl} />
+        <meta name="keywords" content={filteredCategories.map((category) => category.name).join(', ')} />
+        <script type="application/ld+json">{JSON.stringify(categorySchema)}</script>
       </Helmet>
 
       <div className="min-h-screen flex flex-col">

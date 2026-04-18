@@ -134,7 +134,7 @@ export async function loginAdmin(email, password) {
     }
 
     if (!response.ok) {
-      const message = data?.message || 'Access denied. The backend admin service may not be publicly reachable yet.';
+      const message = data?.message || 'Access denied. Please use your configured admin email or owner alias and password.';
       appendLog('error', 'Failed admin login attempt', { message });
       return { ok: false, message };
     }
@@ -147,7 +147,7 @@ export async function loginAdmin(email, password) {
     appendLog('info', 'Admin login successful');
     return { ok: true, email: data.email };
   } catch (error) {
-    const message = 'Admin API is not reachable yet. Point the admin, api, and health subdomains to your server and enable SSL.';
+    const message = 'Admin API is temporarily unreachable. Please try again in a few seconds.';
     appendLog('error', 'Admin API login request failed', { error: error.message });
     return { ok: false, message };
   }
