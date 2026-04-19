@@ -1,15 +1,13 @@
-# Open Source Downloads Map
+# Open Source Starter Map
 
-## Categories
+## Categories to explore
 - AI Tools
 - Programming
 - Security
 - Open Source
 
-## Workflow
-1. Publish a clear software post
-2. Keep the explanation in the article body
-3. Send readers to the matching internal download category
-4. Keep only the original source link for reference
-
-This keeps posts readable and the download area organized.
+## How to use this map
+1. Start with the category that matches your need
+2. Read the short summary before downloading anything
+3. Compare a few options
+4. Move to the official source once you know what fits you best

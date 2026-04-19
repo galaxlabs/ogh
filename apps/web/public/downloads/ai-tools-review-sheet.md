@@ -1,25 +1,16 @@
-# AI Tools Review Sheet
+# AI Tools Starter Checklist
 
-Use this sheet when writing a software post.
+Use this checklist when comparing AI tools as a normal user.
 
-## What to cover
+## What to check first
 - What problem the tool solves
-- Who it is useful for
-- Main features in simple language
-- Limits or caution points
-- Best next step for the reader
+- Whether it works locally or in the cloud
+- Ease of setup for beginners
+- Privacy or account requirements
+- Cost, limits, and supported platforms
 
-## Linking rule
-Do not place raw software download links in the article body.
-Instead:
-1. explain the software clearly
-2. add an internal Download section link
-3. keep the original source link only for reference
-
-## Recommended structure
-- TL;DR
-- What this AI update says
-- Key points
-- Why it matters
-- Download section
-- Sources and further reading
+## Before you install
+1. Read a short explanation of the tool
+2. Check whether it matches your use case
+3. Open the correct download category on the site
+4. Download only from trusted sources

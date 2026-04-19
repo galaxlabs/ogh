@@ -564,7 +564,7 @@ function isTutorialCategory(category = '', title = '', note = '') {
 }
 
 function needsDownloadSection(category = '') {
-  return /(artificial intelligence|ai agents|ai tools|tutorial|programming|web development|foss|open source|repo review|technology)/.test(String(category || '').toLowerCase());
+  return /(artificial intelligence|ai agents|ai tools|tutorial|programming|web development|foss|open source|repo review|technology|article)/.test(String(category || '').toLowerCase());
 }
 
 function getDownloadCategorySlug(category = '') {
@@ -581,13 +581,13 @@ function buildDownloadLinksMarkdown(category = '', absolute = false) {
   const baseUrl = absolute ? `${serviceState.publicSiteUrl}` : '';
   const href = `${baseUrl}/downloads?category=${slug}`;
   const labelMap = {
-    'ai-tools': 'Browse AI tools downloads',
-    'programming': 'Browse programming downloads',
-    'security': 'Browse security downloads',
-    'open-source': 'Browse open-source downloads',
-    featured: 'Browse featured downloads',
+    'ai-tools': 'Open the AI tools download section',
+    'programming': 'Open the programming download section',
+    'security': 'Open the security download section',
+    'open-source': 'Open the open-source download section',
+    featured: 'Open the featured download section',
   };
-  return [`- [${labelMap[slug] || 'Browse downloads on OpenGuideHub'}](${href})`].join('\n');
+  return [`- [${labelMap[slug] || 'Open the download section on OpenGuideHub'}](${href})`].join('\n');
 }
 
 function getCategoryTemplate(category = '') {
@@ -720,12 +720,12 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
   const tldr = highlightPhrase(tldrSource, focusPhrase);
   const overviewLead = tutorialMode
     ? 'یہ گائیڈ موضوع کو آسان اور مرحلہ وار انداز میں سمجھانے کے لیے تیار کی گئی ہے۔'
-    : `OpenGuideHub condensed this ${String(category || 'technology').toLowerCase()} update into a clear, readable brief.`;
+    : `This section introduces ${focusPhrase || cleanEditorialLine(title) || String(category || 'technology').toLowerCase()} in plain language so the reader can quickly understand the topic.`;
   let overviewText = sentences.slice(1, 3).join(' ') || cleanEditorialLine(note) || '';
   if (!overviewText || cleanEditorialLine(overviewText).toLowerCase() === cleanEditorialLine(tldrSource).toLowerCase()) {
     overviewText = tutorialMode
       ? `یہ خلاصہ ${focusPhrase || 'موضوع'} کے بنیادی مقصد، استعمال، اور اگلے قدم کو مختصر انداز میں پیش کرتا ہے۔`
-      : `This brief captures the main context around ${focusPhrase || String(category || 'technology').toLowerCase()} and keeps the original source linked below.`;
+      : `The update focuses on ${focusPhrase || cleanEditorialLine(title) || 'this topic'} and gives useful context about what it is, where it fits, and why readers may care.`;
   }
   const overviewDetail = highlightPhrase(overviewText, focusPhrase);
   const labels = tutorialMode
@@ -738,14 +738,14 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
   ].filter(Boolean).join('\n');
 
   if (tutorialMode) {
-    return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overviewLead}\n\n${overviewDetail}\n\n## مرحلہ وار رہنمائی\n1. پہلے موضوع یا ٹول کا مقصد سمجھیں۔\n2. پھر بنیادی مراحل ایک ایک کر کے فالو کریں۔\n3. آخر میں متعلقہ ڈاؤن لوڈ سیکشن اور اصل سورس دیکھیں۔\n\n## اہم نکات\n${bullets || '- **خلاصہ:** یہ ٹیوٹوریل اب زیادہ واضح انداز میں پیش کیا گیا ہے۔'}\n\n## یہ کیوں اہم ہے\n${template.whyText}\n\n## ڈاؤن لوڈ سیکشن\n${buildDownloadLinksMarkdown(category)}\n\n## ماخذ اور مزید مطالعہ\n${sourceLinks}`.trim();
+    return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overviewLead}\n\n${overviewDetail}\n\n## مرحلہ وار رہنمائی\n1. پہلے موضوع یا ٹول کا مقصد سمجھیں۔\n2. پھر بنیادی مراحل ایک ایک کر کے فالو کریں اور اہم پوائنٹس نوٹ کریں۔\n3. آخر میں متعلقہ ڈاؤن لوڈ سیکشن اور اصل سورس سے اگلا قدم لیں۔\n\n## اہم نکات\n${bullets || '- **خلاصہ:** یہ ٹیوٹوریل اب زیادہ واضح انداز میں پیش کیا گیا ہے۔'}\n\n## یہ کیوں اہم ہے\n${template.whyText}\n\n## ڈاؤن لوڈ سیکشن\n${buildDownloadLinksMarkdown(category)}\n\n## ماخذ اور مزید مطالعہ\n${sourceLinks}`.trim();
   }
 
   const downloadSection = needsDownloadSection(category)
     ? `\n\n## Download section\n${buildDownloadLinksMarkdown(category)}`
     : '';
 
-  return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overviewLead}\n\n${overviewDetail}\n\n## Key points\n${bullets || '- **Summary:** The article is now available in a shorter, easier-to-read format.'}\n\n## Why it matters\n${template.whyText}${downloadSection}\n\n## Continue exploring\n- [More ${focusPhrase || category || 'technology'} guides on OpenGuideHub](${internalLink})\n\n## Sources and further reading\n${sourceLinks}`.trim();
+  return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overviewLead}\n\n${overviewDetail}\n\n## Context to understand\nThis gives readers a clearer explanation of ${focusPhrase || cleanEditorialLine(title) || 'the topic'}, including what it is, who it may help, and the practical angle behind the update.\n\n## Key points\n${bullets || '- **Summary:** The article now focuses on the main takeaway and useful context for readers.'}\n\n## Why it matters\n${template.whyText}${downloadSection}\n\n## Sources and further reading\n${sourceLinks}`.trim();
 }
 
 async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE', sourceDomain = '' }) {

@@ -1,15 +1,11 @@
-# Security Tools Notes
+# Safe Download Notes
 
-## Safe coverage checklist
-- Explain the use case before naming downloads
-- Mention verification and checksum habits
-- Avoid pushing random third-party links inside the article body
-- Group tools under a dedicated security download section
+## Before downloading security tools
+- Make sure the source is trusted
+- Prefer official project pages or verified repositories
+- Check versions and platform compatibility
+- Read a short overview before installing
+- Keep backups when trying powerful admin or security software
 
-## Suggested article structure
-- TL;DR
-- Risk to know
-- Important details
-- Why it matters
-- Download section
-- Source link
+## Good habit
+Use the site category pages to discover tools first, then move to the official source only when you are ready.
