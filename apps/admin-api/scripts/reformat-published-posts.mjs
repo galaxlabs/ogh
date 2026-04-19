@@ -20,15 +20,28 @@ function normalizePublicUrl(value = '') {
 
 function cleanLine(value = '') {
   return String(value || '')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/gi, '$1')
     .replace(/https?:\/\/\S+/gi, ' ')
     .replace(/\bwww\.\S+/gi, ' ')
+    .replace(/\b[a-z0-9.-]+\.(?:com|org|net|io|dev|app|ai|co|me)\b/gi, ' ')
     .replace(/\*\*/g, '')
     .replace(/^#+\s*/, '')
     .replace(/^[>*\-\d.\s]+/, '')
-    .replace(/^(tl;dr|summary|what happened|key points|why it matters|continue exploring|sources and further reading|free tools and downloads|category|source report|read full original article here|original source|quick take|key idea|why now|main detail|what to watch)\s*:?\s*/i, '')
-    .replace(/\b(quick take|key idea|why now|main detail|what to watch)\s*:?/gi, ' ')
+    .replace(/^(tl;dr|summary|what happened|what this ai update says|steps to know|risk to know|project snapshot|key points|why it matters|continue exploring|sources and further reading|free tools and downloads|category|source report|read full original article here|original source|quick take|key idea|why now|main detail|what to watch)\s*:?\s*/i, '')
+    .replace(/\b(tl;dr|rss|type|category|source|source report|original article|read here|read full original article here|read full|read more|original source|continue exploring|quick take|key idea|why now|main detail|what to watch|what this ai update says|steps to know|risk to know|project snapshot)\s*:?/gi, ' ')
+    .replace(/[\[\]()|]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function isWeakSummaryLine(value = '') {
+  const clean = cleanLine(value).toLowerCase();
+  if (!clean) return true;
+  if (/^(artificial intelligence|technology|science|article|open source|programming)( \1)+$/.test(clean)) return true;
+  if (/^(artificial intelligence|technology|science|article|open source|programming)$/.test(clean)) return true;
+  const words = clean.split(/\s+/).filter(Boolean);
+  const uniqueCount = new Set(words).size;
+  return words.length < 5 || uniqueCount <= Math.max(2, Math.floor(words.length / 2));
 }
 
 function uniqueLines(items = []) {
@@ -36,7 +49,7 @@ function uniqueLines(items = []) {
   return items.filter((item) => {
     const clean = cleanLine(item).toLowerCase();
     if (!clean) return false;
-    if (/this archived article was refreshed|this archived post has been reorganized|this article has been reorganized|this article is now available|this topic matters because|this matters for readers because|openguidehub condensed this|free tools and downloads|more .* articles on openguidehub|original source from/.test(clean)) return false;
+    if (/this archived article was refreshed|this archived post has been reorganized|this article has been reorganized|this article is now available|this topic matters because|this matters for readers because|this matters for builders and researchers because|openguidehub condensed this|brief roundup of the day's top ai stories|free tools and downloads|more .* articles on openguidehub|original source from|rss\b|source report|original article|read full original article here|read here\b|^artificial intelligence$/.test(clean) || isWeakSummaryLine(clean)) return false;
     if (seen.some((existing) => existing === clean || existing.includes(clean) || clean.includes(existing))) return false;
     seen.push(clean);
     return true;
