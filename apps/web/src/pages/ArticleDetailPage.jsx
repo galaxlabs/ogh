@@ -80,12 +80,13 @@ function normalizeStructuredContent(content = '') {
   return String(content || '')
     .replace(/\r\n/g, '\n')
     .replace(/(^|\n)\s*##\s*(?=\n)/g, '$1')
-    .replace(/([.!?])\s+(TL;DR|What happened|What this AI update says|Steps to know|Risk to know|Project snapshot|Key points|Why it matters|Free tools and downloads|Sources and further reading)\s*:?\s*/gi, '$1\n\n## $2\n')
-    .replace(/##\s*\n+\s*(TL;DR|What happened|What this AI update says|Steps to know|Risk to know|Project snapshot|Key points|Why it matters|Free tools and downloads|Sources and further reading)\b/gi, '## $1')
+    .replace(/([.!?])\s+(TL;DR|What happened|What this AI update says|Steps to know|Risk to know|Project snapshot|Key points|Why it matters|Continue exploring|Free tools and downloads|Sources and further reading)\s*:?\s*/gi, '$1\n\n## $2\n')
+    .replace(/##\s*\n+\s*(TL;DR|What happened|What this AI update says|Steps to know|Risk to know|Project snapshot|Key points|Why it matters|Continue exploring|Free tools and downloads|Sources and further reading)\b/gi, '## $1')
     .replace(/(^|\n)\s*(TL;DR)\s*:?\s*(?!\n)/gi, '$1## TL;DR\n')
     .replace(/(^|\n)\s*(What happened|What this AI update says|Steps to know|Risk to know|Project snapshot)\s*:?\s*(?!\n)/gi, '$1## $2\n')
     .replace(/(^|\n)\s*(Key points)\s*[-:]?\s*/gi, '$1## Key points\n- ')
     .replace(/(^|\n)\s*(Why it matters)\s*:?\s*(?!\n)/gi, '$1## Why it matters\n')
+    .replace(/(^|\n)\s*(Continue exploring)\s*:?\s*(?!\n)/gi, '$1## Continue exploring\n')
     .replace(/(^|\n)\s*(Free tools and downloads)\s*[-:]?\s*/gi, '$1## Free tools and downloads\n- ')
     .replace(/(^|\n)\s*(Sources and further reading)\s*[-:]?\s*/gi, '$1## Sources and further reading\n- ')
     .replace(/\s+- \[/g, '\n- [')
@@ -93,6 +94,39 @@ function normalizeStructuredContent(content = '') {
     .replace(/\n-\s*-\s+/g, '\n- ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+function slugifyHeading(value = '') {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+function buildSeoKeywords(article) {
+  const values = [
+    article?.title,
+    article?.category,
+    `${article?.category || 'technology'} guide`,
+    `${article?.category || 'technology'} article`,
+    ...(article?.tags || []),
+  ];
+
+  const keywords = [];
+  values.forEach((value) => {
+    String(value || '')
+      .split(/[,\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .forEach((item) => {
+        if (!keywords.some((existing) => existing.toLowerCase() === item.toLowerCase())) {
+          keywords.push(item);
+        }
+      });
+  });
+
+  return keywords.slice(0, 12);
 }
 
 function renderArticleBody(content = '') {
@@ -155,7 +189,8 @@ function renderArticleBody(content = '') {
           ? 'text-2xl font-semibold mt-8 mb-3'
           : 'text-xl font-semibold mt-6 mb-2';
       const HeadingTag = level === 2 ? 'h2' : level === 3 ? 'h3' : 'h4';
-      elements.push(<HeadingTag key={`h-${elements.length}`} className={headingClass}>{renderInlineContent(text)}</HeadingTag>);
+      const headingId = slugifyHeading(text) || `section-${elements.length}`;
+      elements.push(<HeadingTag key={`h-${elements.length}`} id={headingId} className={headingClass}>{renderInlineContent(text)}</HeadingTag>);
       return;
     }
 
@@ -315,6 +350,7 @@ function ArticleDetailPage() {
   const categoryStats = buildCategoryStats(categories, allArticles);
   const articleUrl = `https://openguidehub.org/articles/${article.slug}`;
   const articleContent = translatedContent || article.content;
+  const seoKeywords = buildSeoKeywords(article);
   const articleSchema = {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -333,8 +369,10 @@ function ArticleDetailPage() {
       url: 'https://openguidehub.org',
     },
     mainEntityOfPage: articleUrl,
+    url: articleUrl,
     articleSection: article.category,
-    keywords: [article.category, ...(article.tags || [])].join(', '),
+    keywords: seoKeywords.join(', '),
+    articleBody: String(article.content || '').replace(/\s+/g, ' ').trim().slice(0, 5000),
   };
 
   return (
@@ -348,8 +386,20 @@ function ArticleDetailPage() {
         <meta property="og:type" content="article" />
         <meta property="og:url" content={articleUrl} />
         <meta property="og:image" content={article.image} />
+        <meta property="og:site_name" content="OpenGuideHub" />
+        <meta property="article:section" content={article.category} />
+        <meta property="article:published_time" content={article.publishDate} />
+        <meta property="article:modified_time" content={article.publishDate} />
+        <meta name="author" content={article.author?.name || 'OpenGuideHub'} />
+        <meta name="robots" content="index,follow,max-image-preview:large" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="keywords" content={[article.category, ...(article.tags || [])].join(', ')} />
+        <meta name="twitter:title" content={article.title} />
+        <meta name="twitter:description" content={article.excerpt} />
+        <meta name="twitter:image" content={article.image} />
+        <meta name="keywords" content={seoKeywords.join(', ')} />
+        {(article.tags || []).map((tag) => (
+          <meta key={tag} property="article:tag" content={tag} />
+        ))}
         <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
       </Helmet>
 

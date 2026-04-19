@@ -387,6 +387,25 @@ async function analyzeContentMetadata({ title = '', url = '', note = '', formatt
   }
 }
 
+function normalizeKeywordList(items = []) {
+  const normalized = [];
+
+  for (const item of items) {
+    const clean = cleanEditorialLine(item).slice(0, 48);
+    if (!clean || clean.length < 3) {
+      continue;
+    }
+    if (!normalized.some((entry) => entry.toLowerCase() === clean.toLowerCase())) {
+      normalized.push(clean);
+    }
+    if (normalized.length === 8) {
+      break;
+    }
+  }
+
+  return normalized;
+}
+
 function pickEditorialAuthor(seed = '') {
   const normalized = String(seed || 'OpenGuideHub');
   const hash = crypto.createHash('sha1').update(normalized).digest('hex');
@@ -524,6 +543,79 @@ function buildToolLinksMarkdown(category = '') {
   return template.tools.map((tool) => `- [${tool.label}](${tool.url})`).join('\n');
 }
 
+function extractFocusPhrase(title = '', note = '', category = '') {
+  const stopwords = new Set([
+    'the', 'and', 'for', 'with', 'this', 'that', 'from', 'into', 'over', 'your', 'about',
+    'have', 'has', 'using', 'used', 'guide', 'news', 'update', 'article', 'brief', 'quick',
+    'take', 'what', 'why', 'more', 'read', 'full', 'here', 'been', 'than', 'they', 'them',
+    'their', 'main', 'next', 'step', 'just', 'when', 'where', 'build', 'built',
+  ]);
+  const genericWords = new Set([
+    'useful', 'helpful', 'simple', 'easier', 'easy', 'official', 'example', 'examples',
+    'developer', 'developers', 'project', 'projects', 'platform', 'library', 'libraries',
+    'tools', 'source', 'sources', 'download', 'downloads', 'free',
+  ]);
+  const shortTerms = new Set(['ai', 'ml', 'llm', 'api', 'sdk', 'cli', 'gpu', 'cpu', 'ui', 'ux', 'sql', 'rag']);
+  const words = [];
+  const seen = new Set();
+
+  const collect = (source) => {
+    String(source || '')
+      .match(/[a-z0-9][a-z0-9+.#-]*/gi)
+      ?.forEach((token) => {
+        const normalized = token.trim();
+        const lowered = normalized.toLowerCase();
+        if (!lowered) {
+          return;
+        }
+        if (stopwords.has(lowered) || genericWords.has(lowered)) {
+          return;
+        }
+        if (lowered.length < 4 && !shortTerms.has(lowered)) {
+          return;
+        }
+        if (seen.has(lowered)) {
+          return;
+        }
+        seen.add(lowered);
+        if (shortTerms.has(lowered)) {
+          words.push(lowered.toUpperCase());
+          return;
+        }
+        words.push(/[A-Z]/.test(normalized) ? normalized : lowered);
+      });
+  };
+
+  [title, note, category].forEach((source) => {
+    if (words.length < 3) {
+      collect(source);
+    }
+  });
+
+  if (!words.length) {
+    return cleanEditorialLine(category || title || 'technology');
+  }
+
+  return words.slice(0, 2).join(' ');
+}
+
+function highlightPhrase(text = '', phrase = '') {
+  if (!text || !phrase) {
+    return text;
+  }
+  const candidates = [phrase, ...phrase.split(/\s+/).filter((part) => part.length >= 4)];
+
+  for (const candidate of candidates) {
+    const escaped = candidate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const updated = String(text).replace(new RegExp(`\\b(${escaped})\\b`, 'i'), '==$1==');
+    if (updated !== text) {
+      return updated;
+    }
+  }
+
+  return text;
+}
+
 function buildStructuredFallbackContent({ title = '', url = '', note = '', formattedText = '', category = 'Article', sourceDomain = '' }) {
   const sourceUrl = normalizePublicUrl(url);
   const sourceLabel = sourceDomain || (sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : 'original source');
@@ -531,23 +623,31 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
   const normalizedTitle = cleanEditorialLine(title).toLowerCase();
   const titleLead = normalizedTitle.split(/\s+/).slice(0, 6).join(' ');
   const template = getCategoryTemplate(category);
+  const focusPhrase = extractFocusPhrase(title, note, category);
   const sentences = uniqueLines([
     ...toSentenceList(formattedText),
     ...toSentenceList(note),
     cleanEditorialLine(title),
   ]).filter((item) => item.length > 24 && (!titleLead || !item.toLowerCase().includes(titleLead)));
 
-  const tldr = sentences[0]?.slice(0, 260) || cleanEditorialLine(title) || 'A concise brief is being prepared for this article.';
-  const overview = sentences.slice(1, 3).join(' ') || `OpenGuideHub condensed this ${String(category || 'technology').toLowerCase()} update into a shorter brief for easier reading.`;
+  const tldr = highlightPhrase(
+    sentences[0]?.slice(0, 260) || cleanEditorialLine(title) || 'A concise brief is being prepared for this article.',
+    focusPhrase,
+  );
+  const overviewLead = `OpenGuideHub condensed this ${String(category || 'technology').toLowerCase()} update into a shorter brief for easier reading.`;
+  const overviewDetail = highlightPhrase(
+    sentences.slice(1, 3).join(' ') || cleanEditorialLine(note) || cleanEditorialLine(title),
+    focusPhrase,
+  );
   const labels = ['Key idea', 'Why now', 'Main detail', 'What to watch'];
   const bullets = sentences.slice(0, 4).map((line, index) => `- **${labels[index] || 'Note'}:** ${line.slice(0, 180)}`).join('\n');
   const toolLinks = buildToolLinksMarkdown(category);
   const sourceLinks = [
-    `- [More ${category || 'technology'} articles on OpenGuideHub](${internalLink})`,
-    sourceUrl ? `- [Original source from ${sourceLabel}](${sourceUrl})` : `- Source report: ${sourceLabel}`,
+    `- [More ${focusPhrase || category || 'technology'} guides on OpenGuideHub](${internalLink})`,
+    sourceUrl ? `- [Original ${sourceLabel} article on ${focusPhrase || 'this topic'}](${sourceUrl})` : `- Source report: ${sourceLabel}`,
   ].filter(Boolean).join('\n');
 
-  return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overview}\n\n## Key points\n${bullets || '- **Summary:** The article is now available in a shorter, easier-to-read format.'}\n\n## Why it matters\n${template.whyText}\n\n## Free tools and downloads\n${toolLinks}\n\n## Sources and further reading\n${sourceLinks}`.trim();
+  return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overviewLead}\n\n${overviewDetail}\n\n## Key points\n${bullets || '- **Summary:** The article is now available in a shorter, easier-to-read format.'}\n\n## Why it matters\n${template.whyText}\n\n## Free tools and downloads\n${toolLinks}\n\n## Sources and further reading\n${sourceLinks}`.trim();
 }
 
 async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE', sourceDomain = '' }) {
@@ -572,7 +672,7 @@ async function buildPublishedArticleContent({ title = '', url = '', note = '', f
     const result = await Promise.race([
       generateAiText({
         systemPrompt: `You are the OpenGuideHub editorial formatter agent. Follow this exact house style:\n\n${EDITORIAL_STYLE_GUIDE}\n\nUse the matching category and language template from this guide:\n\n${CONTENT_BOILERPLATES_GUIDE}`,
-        userPrompt: `Create a polished article from this source material.\n\nTitle: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\nExternal source line: ${sourceLine}\n\nRules:\n- choose the best category boilerplate\n- use clear paragraph spacing\n- bold important words and ideas\n- wrap all internal and external links in readable Markdown link text\n- include a short Free tools and downloads section with official free or open-source links when relevant\n\nSource material:\n${baseText}`,
+        userPrompt: `Create a polished article from this source material.\n\nTitle: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\nExternal source line: ${sourceLine}\n\nRules:\n- choose the best category boilerplate\n- output only Markdown\n- use clear paragraph spacing under each heading\n- keep hyperlinks wrapped in readable anchor text and never leave naked URLs in the body\n- use 2 to 4 ==highlighted phrases== for the most important terms\n- strengthen SEO naturally with heading language, source-aware anchor text, and keyword variations from the title\n- bold important words and ideas\n- include a short Free tools and downloads section with official free or open-source links when relevant\n\nSource material:\n${baseText}`,
         temperature: 0.3,
         maxTokens: 900,
         model: serviceState.ollamaRewriterModel,
@@ -937,6 +1037,7 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
       source_image = '',
       author_name = '',
       formatted_text = '',
+      seo_keywords = [],
     } = req.body || {};
 
     const normalizedTitle = String(title || source_domain || 'Imported post').trim();
@@ -959,6 +1060,12 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
     });
 
     const selectedAuthor = String(author_name || '').trim() || pickEditorialAuthor(`${normalizedTitle}|${normalizedUrl}`);
+    const mergedTags = normalizeKeywordList([
+      ...metadata.tags,
+      ...(Array.isArray(seo_keywords) ? seo_keywords : String(seo_keywords || '').split(',')),
+      metadata.category,
+      source_domain,
+    ]);
 
     if (!normalizedTitle && !normalizedUrl && !normalizedContent) {
       return res.status(400).json({ ok: false, message: 'Missing publish content' });
@@ -977,7 +1084,7 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
         status: 'published',
         author: selectedAuthor,
         category: metadata.category,
-        tags: metadata.tags.filter(Boolean).join(','),
+        tags: mergedTags.join(','),
       },
       create: {
         slug,
@@ -987,7 +1094,7 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
         status: 'published',
         author: selectedAuthor,
         category: metadata.category,
-        tags: metadata.tags.filter(Boolean).join(','),
+        tags: mergedTags.join(','),
       },
     });
 
