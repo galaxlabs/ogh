@@ -473,17 +473,22 @@ function isWeakSummaryLine(value = '') {
 
 function uniqueLines(items = []) {
   const seen = [];
-  return items.filter((item) => {
-    const clean = cleanEditorialLine(item).toLowerCase();
+  const normalized = [];
+
+  items.forEach((item) => {
+    const clean = cleanEditorialLine(item);
+    const lowered = clean.toLowerCase();
     if (!clean || isNonContentLine(clean) || isWeakSummaryLine(clean)) {
-      return false;
+      return;
     }
-    if (seen.some((existing) => existing === clean || existing.includes(clean) || clean.includes(existing))) {
-      return false;
+    if (seen.some((existing) => existing === lowered || existing.includes(lowered) || lowered.includes(existing))) {
+      return;
     }
-    seen.push(clean);
-    return true;
+    seen.push(lowered);
+    normalized.push(clean);
   });
+
+  return normalized;
 }
 
 function sanitizeStructuredMarkdown(content = '', title = '') {
@@ -493,6 +498,7 @@ function sanitizeStructuredMarkdown(content = '', title = '') {
   let previousBlank = true;
 
   String(content || '')
+    .split(/<!--\s*source context\s*-->/i)[0]
     .replace(/\r\n/g, '\n')
     .split('\n')
     .forEach((rawLine) => {
@@ -730,12 +736,13 @@ async function buildPublishedArticleContent({ title = '', url = '', note = '', f
   const sourceUrl = normalizePublicUrl(url);
   const sourceLine = sourceUrl ? `Original source: ${sourceUrl}` : 'No external backlink available.';
   const internalLink = `${serviceState.publicSiteUrl}/articles?category=${slugify(category || 'technology')}`;
-  const sanitizedFormattedText = sanitizeStructuredMarkdown(formattedText, title);
+  const rawFormattedText = String(formattedText || '');
+  const sanitizedFormattedText = sanitizeStructuredMarkdown(rawFormattedText, title);
   const baseText = extractMeaningfulContext([
-    ...String(sanitizedFormattedText || '').split(/\n+/),
+    ...rawFormattedText.split(/\n+/),
     ...String(note || '').split(/\n+/),
   ], title).join('\n').trim();
-  const fallback = hasStructuredMarkdown(sanitizedFormattedText) && extractMeaningfulContext(String(sanitizedFormattedText || '').split(/\n+/), title).length >= 2
+  const fallback = hasStructuredMarkdown(sanitizedFormattedText) && extractMeaningfulContext(rawFormattedText.split(/\n+/), title).length >= 2
     ? sanitizedFormattedText
     : buildStructuredFallbackContent({ title, url: sourceUrl, note, formattedText: `${sanitizedFormattedText}\n${baseText}`.trim(), category, sourceDomain });
   const rewriteSource = baseText || sanitizedFormattedText;
@@ -931,14 +938,24 @@ function createGeneratedCover(title = 'OpenGuideHub', category = 'Technology') {
   }
 }
 
+function stripInlineFormatting(value = '') {
+  return String(value || '')
+    .replace(/==([^=]+)==/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/gi, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function mapPublicPost(post, { includeContent = true } = {}) {
   const content = String(post.content || '');
-  const previewContent = includeContent ? content : String(post.excerpt || '').trim();
+  const safeExcerpt = stripInlineFormatting(post.excerpt || '');
+  const previewContent = includeContent ? content : safeExcerpt;
   return {
     id: post.id,
     slug: post.slug,
     title: post.title,
-    excerpt: post.excerpt || '',
+    excerpt: safeExcerpt,
     content: previewContent,
     image: post.image || createGeneratedCover(post.title, post.category || 'Technology'),
     category: post.category || 'Imported',
