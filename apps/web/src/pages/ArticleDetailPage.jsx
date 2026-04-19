@@ -19,6 +19,23 @@ import { fetchPublicPostBySlug, fetchPublicPosts, mergeArticles } from '@/lib/pu
 import { buildCategoryStats } from '@/lib/categoryUtils.js';
 import { explainArticle, translateArticle } from '@/lib/aiReaderService.js';
 
+function renderStyledSegment(segment = '', keyPrefix = 'segment') {
+  return String(segment || '')
+    .split(/(\*\*[^*]+\*\*|==[^=]+==)/g)
+    .filter(Boolean)
+    .map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={`${keyPrefix}-bold-${index}`}>{part.slice(2, -2)}</strong>;
+      }
+
+      if (part.startsWith('==') && part.endsWith('==')) {
+        return <mark key={`${keyPrefix}-mark-${index}`}>{part.slice(2, -2)}</mark>;
+      }
+
+      return <React.Fragment key={`${keyPrefix}-text-${index}`}>{part}</React.Fragment>;
+    });
+}
+
 function renderInlineContent(text = '') {
   const value = String(text || '');
   const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)|(https?:\/\/[^\s]+)|((?:www\.)?[a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s]*)?)|(\/articles\?[^\s]+)/gi;
@@ -28,7 +45,7 @@ function renderInlineContent(text = '') {
 
   while ((match = regex.exec(value)) !== null) {
     if (match.index > lastIndex) {
-      nodes.push(value.slice(lastIndex, match.index));
+      nodes.push(...renderStyledSegment(value.slice(lastIndex, match.index), `text-${match.index}`));
     }
 
     const rawHref = match[2] || match[3] || match[4] || match[5] || '';
@@ -53,7 +70,7 @@ function renderInlineContent(text = '') {
   }
 
   if (lastIndex < value.length) {
-    nodes.push(value.slice(lastIndex));
+    nodes.push(...renderStyledSegment(value.slice(lastIndex), `tail-${lastIndex}`));
   }
 
   return nodes;
@@ -61,12 +78,15 @@ function renderInlineContent(text = '') {
 
 function normalizeStructuredContent(content = '') {
   return String(content || '')
-    .replace(/\s+(TL;DR|What happened|Key points|Why it matters|Sources and further reading)\s+/gi, '\n\n$1 ')
-    .replace(/(^|\n)(TL;DR)\s+(?!\n)/gi, '$1## TL;DR\n')
-    .replace(/(^|\n)(What happened)\s+(?!\n)/gi, '$1## What happened\n')
-    .replace(/(^|\n)(Key points)\s*[-:]?\s*/gi, '$1## Key points\n- ')
-    .replace(/(^|\n)(Why it matters)\s+(?!\n)/gi, '$1## Why it matters\n')
-    .replace(/(^|\n)(Sources and further reading)\s*[-:]?\s*/gi, '$1## Sources and further reading\n- ')
+    .replace(/\r\n/g, '\n')
+    .replace(/([.!?])\s+(TL;DR|What happened|Key points|Why it matters|Free tools and downloads|Sources and further reading)\s*:?\s*/gi, '$1\n\n## $2\n')
+    .replace(/##\s*\n+\s*(TL;DR|What happened|Key points|Why it matters|Free tools and downloads|Sources and further reading)\b/gi, '## $1')
+    .replace(/(^|\n)\s*(TL;DR)\s*:?\s*(?!\n)/gi, '$1## TL;DR\n')
+    .replace(/(^|\n)\s*(What happened)\s*:?\s*(?!\n)/gi, '$1## What happened\n')
+    .replace(/(^|\n)\s*(Key points)\s*[-:]?\s*/gi, '$1## Key points\n- ')
+    .replace(/(^|\n)\s*(Why it matters)\s*:?\s*(?!\n)/gi, '$1## Why it matters\n')
+    .replace(/(^|\n)\s*(Free tools and downloads)\s*[-:]?\s*/gi, '$1## Free tools and downloads\n- ')
+    .replace(/(^|\n)\s*(Sources and further reading)\s*[-:]?\s*/gi, '$1## Sources and further reading\n- ')
     .replace(/\s+- \[/g, '\n- [')
     .replace(/\s+- Source report:/g, '\n- Source report:')
     .replace(/\n-\s*-\s+/g, '\n- ')
@@ -449,7 +469,7 @@ function ArticleDetailPage() {
                   </div>
                 </div>
 
-                <div className="prose prose-lg max-w-none mb-12">
+                <div className="article-reading prose prose-lg max-w-none mb-12">
                   {renderArticleBody(articleContent)}
                 </div>
 

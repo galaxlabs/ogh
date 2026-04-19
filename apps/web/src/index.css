@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -78,9 +78,16 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: "Ubuntu", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     overflow-x: clip;
-    line-height: 1.625;
+    line-height: 1.7;
+  }
+
+  html[lang="ur"] body,
+  html[lang="ar"] body,
+  html[dir="rtl"] body {
+    font-family: "Noto Naskh Arabic", "Amiri", serif;
+    line-height: 1.9;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -128,6 +135,26 @@
 
   blockquote {
     @apply border-l-4 border-primary pl-4 italic;
+  }
+
+  .article-reading {
+    @apply rounded-3xl border bg-background/80 p-6 md:p-8 shadow-sm;
+  }
+
+  .article-reading p {
+    @apply max-w-none text-[1.02rem] md:text-[1.06rem] leading-8 mb-4;
+  }
+
+  .article-reading strong {
+    @apply font-bold text-primary;
+  }
+
+  .article-reading mark {
+    @apply rounded bg-primary/10 px-1 py-0.5 text-primary;
+  }
+
+  .article-reading a {
+    @apply font-medium text-primary underline decoration-primary/40 underline-offset-4;
   }
 }
 

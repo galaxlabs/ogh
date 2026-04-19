@@ -17,6 +17,7 @@ const backupDir = path.join(logDir, 'backups');
 const editorialStyleFile = path.join(__dirname, 'editorial-style-guide.md');
 const researchExplainerFile = path.join(__dirname, 'ai-research-explainer-skill.md');
 const multilingualReaderFile = path.join(__dirname, 'multilingual-reader-skill.md');
+const boilerplateTemplatesFile = path.join(__dirname, 'content-boilerplates.md');
 
 fs.mkdirSync(logDir, { recursive: true });
 fs.mkdirSync(backupDir, { recursive: true });
@@ -42,6 +43,11 @@ const AI_RESEARCH_EXPLAINER_GUIDE = loadGuideFile(
 const MULTILINGUAL_READER_GUIDE = loadGuideFile(
   multilingualReaderFile,
   'Translate website and article text clearly for Urdu, Arabic, and English readers while preserving headings, bullets, and links.'
+);
+
+const CONTENT_BOILERPLATES_GUIDE = loadGuideFile(
+  boilerplateTemplatesFile,
+  'Use category-aware templates with clean headings, bold key ideas, free tool links, and wrapped internal/external links.'
 );
 
 app.use(cors());
@@ -281,11 +287,27 @@ function buildFallbackTranslation(title = '', text = '', targetLanguage = 'Urdu'
   const cleanedTitle = String(title || 'OpenGuideHub').trim();
 
   if (/urdu/i.test(targetLanguage)) {
-    return `## اردو مطالعہ\n${cleanedTitle}\n\n${content}\n\nنوٹ: خودکار ترجمہ عارضی طور پر محدود ہے، اس لیے اصل متن برقرار رکھا گیا ہے تاکہ آپ مطالعہ جاری رکھ سکیں۔`.trim();
+    const localized = content
+      .replace(/##\s*TL;DR/gi, '## خلاصہ')
+      .replace(/##\s*What happened/gi, '## کیا ہوا')
+      .replace(/##\s*Key points/gi, '## اہم نکات')
+      .replace(/##\s*Why it matters/gi, '## یہ کیوں اہم ہے')
+      .replace(/##\s*Free tools and downloads/gi, '## مفت اوپن سورس ٹولز')
+      .replace(/##\s*Sources and further reading/gi, '## ذرائع اور مزید مطالعہ');
+
+    return `## اردو مطالعہ\n**عنوان:** ${cleanedTitle}\n\n${localized}\n\nنوٹ: خودکار ترجمہ عارضی طور پر محدود ہے، اس لیے اصل متن برقرار رکھا گیا ہے تاکہ آپ مطالعہ جاری رکھ سکیں۔`.trim();
   }
 
   if (/arabic/i.test(targetLanguage)) {
-    return `## قراءة بالعربية\n${cleanedTitle}\n\n${content}\n\nملاحظة: الترجمة التلقائية محدودة مؤقتاً، لذلك تم الإبقاء على النص الأصلي حتى يتمكن القارئ من المتابعة.`.trim();
+    const localized = content
+      .replace(/##\s*TL;DR/gi, '## الخلاصة')
+      .replace(/##\s*What happened/gi, '## ماذا حدث')
+      .replace(/##\s*Key points/gi, '## النقاط الأساسية')
+      .replace(/##\s*Why it matters/gi, '## لماذا هذا مهم')
+      .replace(/##\s*Free tools and downloads/gi, '## أدوات مفتوحة المصدر مجانية')
+      .replace(/##\s*Sources and further reading/gi, '## المصادر والقراءة الإضافية');
+
+    return `## قراءة بالعربية\n**العنوان:** ${cleanedTitle}\n\n${localized}\n\nملاحظة: الترجمة التلقائية محدودة مؤقتاً، لذلك تم الإبقاء على النص الأصلي حتى يتمكن القارئ من المتابعة.`.trim();
   }
 
   return content;
@@ -383,8 +405,10 @@ function cleanEditorialLine(value = '') {
   return String(value || '')
     .replace(/https?:\/\/\S+/gi, ' ')
     .replace(/\bwww\.\S+/gi, ' ')
+    .replace(/\*\*/g, '')
     .replace(/^[#>*\-\d.\s]+/, '')
-    .replace(/^(tl;dr|summary|what happened|key points|why it matters|continue exploring|sources and further reading|category|source report|read full original article here|original source)\s*:?\s*/i, '')
+    .replace(/^(tl;dr|summary|what happened|key points|why it matters|continue exploring|sources and further reading|free tools and downloads|category|source report|read full original article here|original source|quick take|key idea|why now|main detail|what to watch)\s*:?\s*/i, '')
+    .replace(/\b(quick take|key idea|why now|main detail|what to watch)\s*:?/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -396,7 +420,7 @@ function uniqueLines(items = []) {
     if (!clean) {
       return false;
     }
-    if (/this archived article was refreshed|this archived post has been reorganized|this article has been reorganized|this article is now available|this topic matters because|this matters for readers because|more .* articles on openguidehub|original source from/.test(clean)) {
+    if (/this archived article was refreshed|this archived post has been reorganized|this article has been reorganized|this article is now available|this topic matters because|this matters for readers because|openguidehub condensed this|free tools and downloads|more .* articles on openguidehub|original source from/.test(clean)) {
       return false;
     }
     if (seen.some((existing) => existing === clean || existing.includes(clean) || clean.includes(existing))) {
@@ -414,12 +438,80 @@ function toSentenceList(value = '') {
     .filter(Boolean);
 }
 
+function getCategoryTemplate(category = '') {
+  const key = String(category || '').toLowerCase();
+
+  if (/(artificial intelligence|ai agents|ai tools)/.test(key)) {
+    return {
+      summaryHeading: 'What this AI update says',
+      whyText: 'This matters for builders and researchers because it highlights the main model idea, trade-offs, and next practical step quickly.',
+      tools: [
+        { label: 'Ollama download', url: 'https://ollama.com/download' },
+        { label: 'Open WebUI project', url: 'https://github.com/open-webui/open-webui' },
+        { label: 'JupyterLab', url: 'https://jupyter.org/install' },
+      ],
+    };
+  }
+
+  if (/(tutorial|programming|how-to|web development)/.test(key)) {
+    return {
+      summaryHeading: 'Steps to know',
+      whyText: 'This helps learners move from theory to practice faster with a clearer step-by-step reading flow.',
+      tools: [
+        { label: 'Visual Studio Code', url: 'https://code.visualstudio.com/Download' },
+        { label: 'Git downloads', url: 'https://git-scm.com/downloads' },
+        { label: 'Node.js', url: 'https://nodejs.org/en/download' },
+      ],
+    };
+  }
+
+  if (/(cyber|security)/.test(key)) {
+    return {
+      summaryHeading: 'Risk to know',
+      whyText: 'This matters for safety-minded readers because it explains the risk, the signal to watch, and the safer next move.',
+      tools: [
+        { label: 'Wireshark', url: 'https://www.wireshark.org/download.html' },
+        { label: 'KeePassXC', url: 'https://keepassxc.org/download/' },
+        { label: 'ClamAV', url: 'https://www.clamav.net/downloads' },
+      ],
+    };
+  }
+
+  if (/(foss|open source|repo review)/.test(key)) {
+    return {
+      summaryHeading: 'Project snapshot',
+      whyText: 'This matters for the open-source community because it highlights practical value, adoption signals, and where to explore next.',
+      tools: [
+        { label: 'GitHub Desktop', url: 'https://desktop.github.com/download/' },
+        { label: 'LibreOffice', url: 'https://www.libreoffice.org/download/download-libreoffice/' },
+        { label: 'GIMP', url: 'https://www.gimp.org/downloads/' },
+      ],
+    };
+  }
+
+  return {
+    summaryHeading: 'What happened',
+    whyText: 'This matters for readers because it surfaces the key idea quickly and keeps the original source available for deeper reading.',
+    tools: [
+      { label: 'Firefox browser', url: 'https://www.mozilla.org/firefox/new/' },
+      { label: 'LibreOffice', url: 'https://www.libreoffice.org/download/download-libreoffice/' },
+      { label: 'VLC media player', url: 'https://www.videolan.org/vlc/' },
+    ],
+  };
+}
+
+function buildToolLinksMarkdown(category = '') {
+  const template = getCategoryTemplate(category);
+  return template.tools.map((tool) => `- [${tool.label}](${tool.url})`).join('\n');
+}
+
 function buildStructuredFallbackContent({ title = '', url = '', note = '', formattedText = '', category = 'Article', sourceDomain = '' }) {
   const sourceUrl = normalizePublicUrl(url);
   const sourceLabel = sourceDomain || (sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : 'original source');
   const internalLink = `${serviceState.publicSiteUrl}/articles?category=${slugify(category || 'technology')}`;
   const normalizedTitle = cleanEditorialLine(title).toLowerCase();
   const titleLead = normalizedTitle.split(/\s+/).slice(0, 6).join(' ');
+  const template = getCategoryTemplate(category);
   const sentences = uniqueLines([
     ...toSentenceList(formattedText),
     ...toSentenceList(note),
@@ -428,13 +520,15 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
 
   const tldr = sentences[0]?.slice(0, 260) || cleanEditorialLine(title) || 'A concise brief is being prepared for this article.';
   const overview = sentences.slice(1, 3).join(' ') || `OpenGuideHub condensed this ${String(category || 'technology').toLowerCase()} update into a shorter brief for easier reading.`;
-  const bullets = sentences.slice(0, 4).map((line) => `- ${line.slice(0, 180)}`).join('\n');
+  const labels = ['Key idea', 'Why now', 'Main detail', 'What to watch'];
+  const bullets = sentences.slice(0, 4).map((line, index) => `- **${labels[index] || 'Note'}:** ${line.slice(0, 180)}`).join('\n');
+  const toolLinks = buildToolLinksMarkdown(category);
   const sourceLinks = [
     `- [More ${category || 'technology'} articles on OpenGuideHub](${internalLink})`,
     sourceUrl ? `- [Original source from ${sourceLabel}](${sourceUrl})` : `- Source report: ${sourceLabel}`,
   ].filter(Boolean).join('\n');
 
-  return `## TL;DR\n${tldr}\n\n## What happened\n${overview}\n\n## Key points\n${bullets || '- The article is now available in a shorter, easier-to-read format.'}\n\n## Why it matters\nThis matters for readers following ${String(category || 'technology').toLowerCase()} because it highlights the main idea quickly while preserving the original source for deeper reading.\n\n## Sources and further reading\n${sourceLinks}`.trim();
+  return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overview}\n\n## Key points\n${bullets || '- **Summary:** The article is now available in a shorter, easier-to-read format.'}\n\n## Why it matters\n${template.whyText}\n\n## Free tools and downloads\n${toolLinks}\n\n## Sources and further reading\n${sourceLinks}`.trim();
 }
 
 async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE', sourceDomain = '' }) {
@@ -458,8 +552,8 @@ async function buildPublishedArticleContent({ title = '', url = '', note = '', f
   try {
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: `You are the OpenGuideHub editorial formatter agent. Follow this exact house style:\n\n${EDITORIAL_STYLE_GUIDE}`,
-        userPrompt: `Create a polished article from this source material.\n\nTitle: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\nExternal source line: ${sourceLine}\n\nSource material:\n${baseText}`,
+        systemPrompt: `You are the OpenGuideHub editorial formatter agent. Follow this exact house style:\n\n${EDITORIAL_STYLE_GUIDE}\n\nUse the matching category and language template from this guide:\n\n${CONTENT_BOILERPLATES_GUIDE}`,
+        userPrompt: `Create a polished article from this source material.\n\nTitle: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\nExternal source line: ${sourceLine}\n\nRules:\n- choose the best category boilerplate\n- use clear paragraph spacing\n- bold important words and ideas\n- wrap all internal and external links in readable Markdown link text\n- include a short Free tools and downloads section with official free or open-source links when relevant\n\nSource material:\n${baseText}`,
         temperature: 0.3,
         maxTokens: 900,
         model: serviceState.ollamaRewriterModel,
@@ -931,11 +1025,27 @@ app.post('/api/ai/translate', async (req, res) => {
       new Promise((_, reject) => setTimeout(() => reject(new Error('AI translation timeout')), 10000)),
     ]);
 
+    const translatedContent = String(result.content || '').trim();
+    const looksTruncated = (
+      (normalizedText.length > 400 && translatedContent.length < 160) ||
+      (normalizedText.length > 1200 && translatedContent.length < normalizedText.length * 0.3)
+    );
+
+    if (looksTruncated) {
+      return res.json({
+        ok: true,
+        provider: 'local-fallback',
+        targetLanguage,
+        content: buildFallbackTranslation(title, normalizedText, targetLanguage),
+        warning: 'AI translation returned partial content, so the full reading fallback was used.',
+      });
+    }
+
     return res.json({
       ok: true,
       provider: result.provider,
       targetLanguage,
-      content: result.content,
+      content: translatedContent,
     });
   } catch (error) {
     log('warn', 'AI translation fallback used', { error: error.message, targetLanguage });
