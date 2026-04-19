@@ -165,6 +165,7 @@ function ArticleDetailPage() {
   const [translatedContent, setTranslatedContent] = useState('');
   const [translationNotice, setTranslationNotice] = useState('');
   const [translationLoading, setTranslationLoading] = useState(false);
+  const [autoTranslatedKey, setAutoTranslatedKey] = useState('');
   const [aiQuestion, setAiQuestion] = useState('Explain this post in simple terms with practical examples.');
   const [aiAnswer, setAiAnswer] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -194,7 +195,7 @@ function ArticleDetailPage() {
     localStorage.setItem('language', lang);
   };
 
-  const handleTranslate = async (article) => {
+  const handleTranslate = async (article, desiredLanguage = targetLanguage) => {
     setTranslationLoading(true);
     setTranslationNotice('');
 
@@ -202,12 +203,14 @@ function ArticleDetailPage() {
       const result = await translateArticle({
         title: article.title,
         text: article.content,
-        targetLanguage,
+        targetLanguage: desiredLanguage,
       });
       setTranslatedContent(result.content || '');
-      setTranslationNotice(`Translated with ${result.provider} into ${targetLanguage}.`);
+      setTranslationNotice(`Translated with ${result.provider} into ${desiredLanguage}.`);
+      setAutoTranslatedKey(`${article.slug}:${desiredLanguage}`);
     } catch (error) {
       setTranslationNotice(error.message || 'Translation is not available yet.');
+      setAutoTranslatedKey(`${article.slug}:${desiredLanguage}`);
     } finally {
       setTranslationLoading(false);
     }
@@ -233,6 +236,36 @@ function ArticleDetailPage() {
   };
 
   const article = allArticles.find(a => a.slug === slug);
+
+  useEffect(() => {
+    if (currentLanguage === 'ur') {
+      setTargetLanguage('Urdu');
+    } else if (currentLanguage === 'ar') {
+      setTargetLanguage('Arabic');
+    } else if (currentLanguage === 'en') {
+      setTargetLanguage('English');
+      setTranslatedContent('');
+      setTranslationNotice('');
+      setAutoTranslatedKey('');
+    }
+  }, [currentLanguage]);
+
+  useEffect(() => {
+    if (!article) return;
+    const researchHint = /arxiv|llm|large language model|transformer|neural|diffusion|artificial intelligence|machine learning/i.test(`${article.title} ${article.category} ${article.excerpt}`);
+    if (researchHint) {
+      setAiQuestion('Explain this AI research article in simple language: what problem it solves, how it works, the key result, and why it matters.');
+    }
+  }, [article]);
+
+  useEffect(() => {
+    if (!article) return;
+    const desiredLanguage = currentLanguage === 'ur' ? 'Urdu' : currentLanguage === 'ar' ? 'Arabic' : '';
+    if (!desiredLanguage) return;
+    const key = `${article.slug}:${desiredLanguage}`;
+    if (autoTranslatedKey === key || translationLoading) return;
+    handleTranslate(article, desiredLanguage);
+  }, [article, currentLanguage]);
 
   if (!article && loading) {
     return null;

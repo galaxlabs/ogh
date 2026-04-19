@@ -15,19 +15,28 @@ const logDir = path.join(__dirname, 'runtime');
 const logFile = path.join(logDir, 'admin-service.log');
 const backupDir = path.join(logDir, 'backups');
 const editorialStyleFile = path.join(__dirname, 'editorial-style-guide.md');
+const researchExplainerFile = path.join(__dirname, 'ai-research-explainer-skill.md');
 
 fs.mkdirSync(logDir, { recursive: true });
 fs.mkdirSync(backupDir, { recursive: true });
 
-function loadEditorialStyleGuide() {
+function loadGuideFile(filePath, fallbackText) {
   try {
-    return fs.readFileSync(editorialStyleFile, 'utf8').trim();
+    return fs.readFileSync(filePath, 'utf8').trim();
   } catch {
-    return 'Use Markdown sections named TL;DR, What happened, Key points, Why it matters, and Sources and further reading. Keep paragraphs short, avoid repeated labels, and include one internal link plus one source backlink when relevant.';
+    return fallbackText;
   }
 }
 
-const EDITORIAL_STYLE_GUIDE = loadEditorialStyleGuide();
+const EDITORIAL_STYLE_GUIDE = loadGuideFile(
+  editorialStyleFile,
+  'Use Markdown sections named TL;DR, What happened, Key points, Why it matters, and Sources and further reading. Keep paragraphs short, avoid repeated labels, and include one internal link plus one source backlink when relevant.'
+);
+
+const AI_RESEARCH_EXPLAINER_GUIDE = loadGuideFile(
+  researchExplainerFile,
+  'Explain AI and arXiv articles in simple language with sections for TL;DR, Research goal, How it works, Key findings, Why it matters, and Limits and caution.'
+);
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -238,11 +247,36 @@ const EDITORIAL_AUTHOR_POOL = [
   'Guide Studio',
 ];
 
+function isAiResearchContent(title = '', content = '') {
+  const sample = `${title} ${content}`.toLowerCase();
+  return /(arxiv|llm|large language model|transformer|neural network|diffusion|benchmark|fine-tun|agentic|artificial intelligence|machine learning)/i.test(sample);
+}
+
+function buildFallbackTranslation(title = '', text = '', targetLanguage = 'Urdu') {
+  const content = String(text || '').trim();
+  const cleanedTitle = String(title || 'OpenGuideHub').trim();
+
+  if (/urdu/i.test(targetLanguage)) {
+    return `## اردو مطالعہ\n${cleanedTitle}\n\n${content}\n\nنوٹ: خودکار ترجمہ عارضی طور پر محدود ہے، اس لیے اصل متن برقرار رکھا گیا ہے تاکہ آپ مطالعہ جاری رکھ سکیں۔`.trim();
+  }
+
+  if (/arabic/i.test(targetLanguage)) {
+    return `## قراءة بالعربية\n${cleanedTitle}\n\n${content}\n\nملاحظة: الترجمة التلقائية محدودة مؤقتاً، لذلك تم الإبقاء على النص الأصلي حتى يتمكن القارئ من المتابعة.`.trim();
+  }
+
+  return content;
+}
+
 function buildFallbackExplanation(title = '', content = '', question = '') {
   const cleaned = String(content || '').replace(/\s+/g, ' ').trim();
   const parts = cleaned.split(/(?<=[.!?])\s+/).filter(Boolean);
   const preview = parts.slice(0, 2).join(' ');
-  const takeaways = parts.slice(2, 5).map((line) => `- ${line}`).join('\n');
+  const takeaways = parts.slice(2, 6).map((line) => `- ${line}`).join('\n');
+  const researchMode = isAiResearchContent(title, content);
+
+  if (researchMode) {
+    return `## TL;DR\n${preview || title || 'This AI research article is being prepared.'}\n\n## Research goal\n${parts[1] || 'The paper explores a technical problem and proposes a method to improve results.'}\n\n## Key findings\n${takeaways || '- A clearer research summary will appear here when the model responds.'}\n\n## Why it matters\nThis explanation is simplified so readers can understand the paper without reading every technical detail.`;
+  }
 
   if (question) {
     return `## Simple explanation\n${preview || title || 'This topic is being prepared.'}\n\n## Key takeaways\n${takeaways || '- More details will appear here once the model responds.'}`;
@@ -323,20 +357,28 @@ function normalizePublicUrl(value = '') {
 
 function cleanEditorialLine(value = '') {
   return String(value || '')
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/\bwww\.\S+/gi, ' ')
     .replace(/^[#>*\-\d.\s]+/, '')
-    .replace(/^(tl;dr|summary|what happened|key points|why it matters|continue exploring|sources and further reading|category|source report|read full original article here)\s*:?\s*/i, '')
+    .replace(/^(tl;dr|summary|what happened|key points|why it matters|continue exploring|sources and further reading|category|source report|read full original article here|original source)\s*:?\s*/i, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 function uniqueLines(items = []) {
-  const seen = new Set();
+  const seen = [];
   return items.filter((item) => {
     const clean = cleanEditorialLine(item).toLowerCase();
-    if (!clean || seen.has(clean)) {
+    if (!clean) {
       return false;
     }
-    seen.add(clean);
+    if (/this archived article was refreshed|this topic matters because|more .* articles on openguidehub|original source from/.test(clean)) {
+      return false;
+    }
+    if (seen.some((existing) => existing === clean || existing.includes(clean) || clean.includes(existing))) {
+      return false;
+    }
+    seen.push(clean);
     return true;
   });
 }
@@ -352,11 +394,13 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
   const sourceUrl = normalizePublicUrl(url);
   const sourceLabel = sourceDomain || (sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : 'original source');
   const internalLink = `${serviceState.publicSiteUrl}/articles?category=${slugify(category || 'technology')}`;
+  const normalizedTitle = cleanEditorialLine(title).toLowerCase();
+  const titleLead = normalizedTitle.split(/\s+/).slice(0, 6).join(' ');
   const sentences = uniqueLines([
     ...toSentenceList(formattedText),
     ...toSentenceList(note),
     cleanEditorialLine(title),
-  ]).filter((item) => item.length > 24);
+  ]).filter((item) => item.length > 24 && (!titleLead || !item.toLowerCase().includes(titleLead)));
 
   const tldr = sentences[0]?.slice(0, 260) || cleanEditorialLine(title) || 'A concise brief is being prepared for this article.';
   const overview = sentences.slice(1, 3).join(' ') || 'This article has been reorganized into a cleaner editorial brief for easier reading.';
@@ -816,7 +860,7 @@ app.post('/api/ai/translate', async (req, res) => {
   try {
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: `You are a precise multilingual translator for OpenGuideHub. Translate the provided article into ${targetLanguage}. Preserve headings, bullets, and structure. Do not add commentary or extra notes.`,
+        systemPrompt: `You are a precise multilingual translator for OpenGuideHub. Translate the provided website or article text into ${targetLanguage} using natural, reader-friendly language. Preserve headings, bullets, links, and structure. When translating into Urdu or Arabic, use fluent right-to-left friendly phrasing. Do not add commentary or extra notes.`,
         userPrompt: `Title: ${title}\n\nContent:\n${normalizedText}`,
         temperature: 0.2,
         maxTokens: 2200,
@@ -831,10 +875,13 @@ app.post('/api/ai/translate', async (req, res) => {
       content: result.content,
     });
   } catch (error) {
-    log('warn', 'AI translation unavailable', { error: error.message, targetLanguage });
-    return res.status(503).json({
-      ok: false,
-      message: `Translation is unavailable until Ollama or OpenRouter is configured: ${error.message}`,
+    log('warn', 'AI translation fallback used', { error: error.message, targetLanguage });
+    return res.json({
+      ok: true,
+      provider: 'local-fallback',
+      targetLanguage,
+      content: buildFallbackTranslation(title, normalizedText, targetLanguage),
+      warning: error.message,
     });
   }
 });
@@ -852,10 +899,19 @@ app.post('/api/ai/explain', async (req, res) => {
   }
 
   try {
+    const researchMode = isAiResearchContent(title, normalizedContent);
+    const systemPrompt = researchMode
+      ? `You are the OpenGuideHub AI research explainer. Answer in ${language}. Follow this guide exactly:\n\n${AI_RESEARCH_EXPLAINER_GUIDE}`
+      : `You are the OpenGuideHub reading assistant. Answer clearly in ${language}. Use only the provided article context, explain difficult ideas simply, and avoid making up facts. Prefer a short TL;DR first, then 3 key takeaways.`;
+
+    const readerPrompt = researchMode
+      ? (question || 'Explain this AI or arXiv article in simple language: what problem it solves, how it works, the key result, and why it matters.')
+      : (question || 'Give me a simple explanation and key takeaways.');
+
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: `You are the OpenGuideHub reading assistant. Answer clearly in ${language}. Use only the provided article context, explain difficult ideas simply, and avoid making up facts. Prefer a short TL;DR first, then 3 key takeaways.`,
-        userPrompt: `Article title: ${title}\n\nReader question: ${question || 'Give me a simple explanation and key takeaways.'}\n\nArticle content:\n${normalizedContent}`,
+        systemPrompt,
+        userPrompt: `Article title: ${title}\n\nReader question: ${readerPrompt}\n\nArticle content:\n${normalizedContent}`,
         temperature: 0.3,
         maxTokens: 1200,
       }),

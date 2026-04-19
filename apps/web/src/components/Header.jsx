@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -12,6 +12,12 @@ function Header({ currentLanguage, onLanguageChange, translations }) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.lang = currentLanguage || 'en';
+    document.documentElement.dir = ['ur', 'ar'].includes(currentLanguage) ? 'rtl' : 'ltr';
+  }, [currentLanguage]);
 
   const navigationItems = [
     { label: translations.nav.home, path: '/' },
