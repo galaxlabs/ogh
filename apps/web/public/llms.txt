@@ -1,7 +1,7 @@
 ## Pages
 - [- OpenGuideHub`}](/articledetail): No description available
 - [`}](/home): No description available
-- [Downloads | OpenGuideHub](/downloads): Download templates, guides, and CMS starter resources from OpenGuideHub.
+- [Downloads | OpenGuideHub](/downloads): Browse categorized software, AI tool, security, and Urdu tutorial downloads on OpenGuideHub.
 - [roadmap.sh — OpenGuideHub](/roadmap): Platform roadmap, deployment guide, and PocketBase usage overview for OpenGuideHub.
 - [Untitled Page](/about): Learn about OpenGuideHub
 - [Untitled Page](/articles): Browse all articles and guides on OpenGuideHub
