@@ -34,7 +34,7 @@ function uniqueLines(items = []) {
   return items.filter((item) => {
     const clean = cleanLine(item).toLowerCase();
     if (!clean) return false;
-    if (/this archived article was refreshed|this topic matters because|more .* articles on openguidehub|original source from/.test(clean)) return false;
+    if (/this archived article was refreshed|this archived post has been reorganized|this article has been reorganized|this article is now available|this topic matters because|this matters for readers because|more .* articles on openguidehub|original source from/.test(clean)) return false;
     if (seen.some((existing) => existing === clean || existing.includes(clean) || clean.includes(existing))) return false;
     seen.push(clean);
     return true;
@@ -68,7 +68,7 @@ function buildCleanContent(post) {
   ]).filter((item) => item.length > 20 && (!titleLead || !item.toLowerCase().includes(titleLead)));
 
   const tldr = (sentences[0] || title || 'A short summary is being prepared.').slice(0, 260);
-  const overview = (sentences.slice(1, 3).join(' ') || 'This archived post has been reorganized into a clean editorial brief for easier reading.').slice(0, 420);
+  const overview = (sentences.slice(1, 3).join(' ') || `OpenGuideHub condensed this ${String(category || 'technology').toLowerCase()} update into a shorter brief for easier reading.`).slice(0, 420);
   const bullets = sentences.slice(0, 4).map((line) => `- ${line.slice(0, 180)}`).join('\n');
   const sources = [
     `- [More ${category} articles on OpenGuideHub](${internalLink})`,
@@ -78,7 +78,7 @@ function buildCleanContent(post) {
   return {
     title,
     excerpt: tldr.slice(0, 220),
-    content: `## TL;DR\n${tldr}\n\n## What happened\n${overview}\n\n## Key points\n${bullets || '- This article is now available in a cleaner, easier-to-read structure.'}\n\n## Why it matters\nThis archived article was refreshed so readers can understand the main idea quickly and continue exploring in their own language.\n\n## Sources and further reading\n${sources}`.trim(),
+    content: `## TL;DR\n${tldr}\n\n## What happened\n${overview}\n\n## Key points\n${bullets || '- This article is now available in a cleaner, easier-to-read structure.'}\n\n## Why it matters\nThis matters for readers because it surfaces the key idea quickly and keeps the original source available for deeper reading.\n\n## Sources and further reading\n${sources}`.trim(),
   };
 }
 

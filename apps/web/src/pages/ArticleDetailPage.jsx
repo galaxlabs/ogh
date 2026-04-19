@@ -59,8 +59,23 @@ function renderInlineContent(text = '') {
   return nodes;
 }
 
+function normalizeStructuredContent(content = '') {
+  return String(content || '')
+    .replace(/\s+(TL;DR|What happened|Key points|Why it matters|Sources and further reading)\s+/gi, '\n\n$1 ')
+    .replace(/(^|\n)(TL;DR)\s+(?!\n)/gi, '$1## TL;DR\n')
+    .replace(/(^|\n)(What happened)\s+(?!\n)/gi, '$1## What happened\n')
+    .replace(/(^|\n)(Key points)\s*[-:]?\s*/gi, '$1## Key points\n- ')
+    .replace(/(^|\n)(Why it matters)\s+(?!\n)/gi, '$1## Why it matters\n')
+    .replace(/(^|\n)(Sources and further reading)\s*[-:]?\s*/gi, '$1## Sources and further reading\n- ')
+    .replace(/\s+- \[/g, '\n- [')
+    .replace(/\s+- Source report:/g, '\n- Source report:')
+    .replace(/\n-\s*-\s+/g, '\n- ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function renderArticleBody(content = '') {
-  const lines = String(content || '').split('\n');
+  const lines = normalizeStructuredContent(content).split('\n');
   const elements = [];
   let paragraphLines = [];
   let listType = null;
@@ -114,7 +129,7 @@ function renderArticleBody(content = '') {
       const level = headingMatch[1].length;
       const text = headingMatch[2].trim();
       const headingClass = level === 2
-        ? 'text-3xl font-bold mt-12 mb-4'
+        ? 'inline-flex rounded-full bg-primary/10 px-4 py-1.5 text-lg font-semibold text-primary mt-10 mb-4'
         : level === 3
           ? 'text-2xl font-semibold mt-8 mb-3'
           : 'text-xl font-semibold mt-6 mb-2';

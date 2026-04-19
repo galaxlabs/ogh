@@ -16,6 +16,7 @@ const logFile = path.join(logDir, 'admin-service.log');
 const backupDir = path.join(logDir, 'backups');
 const editorialStyleFile = path.join(__dirname, 'editorial-style-guide.md');
 const researchExplainerFile = path.join(__dirname, 'ai-research-explainer-skill.md');
+const multilingualReaderFile = path.join(__dirname, 'multilingual-reader-skill.md');
 
 fs.mkdirSync(logDir, { recursive: true });
 fs.mkdirSync(backupDir, { recursive: true });
@@ -38,6 +39,11 @@ const AI_RESEARCH_EXPLAINER_GUIDE = loadGuideFile(
   'Explain AI and arXiv articles in simple language with sections for TL;DR, Research goal, How it works, Key findings, Why it matters, and Limits and caution.'
 );
 
+const MULTILINGUAL_READER_GUIDE = loadGuideFile(
+  multilingualReaderFile,
+  'Translate website and article text clearly for Urdu, Arabic, and English readers while preserving headings, bullets, and links.'
+);
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
@@ -57,14 +63,17 @@ const serviceState = {
   publicSiteUrl: process.env.PUBLIC_SITE_URL || 'https://openguidehub.org',
   aiRewriteOnPublish: String(process.env.AI_REWRITE_ON_PUBLISH || '1') === '1',
   multiAgentPipeline: String(process.env.ENABLE_MULTI_AGENT_PIPELINE || '1') === '1',
-  aiProvider: process.env.AI_PROVIDER || 'ollama',
+  aiProvider: process.env.AI_PROVIDER || (process.env.OPENROUTER_API_KEY ? 'openrouter' : 'ollama'),
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434',
   ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:8b',
   ollamaAnalyzerModel: process.env.OLLAMA_ANALYZER_MODEL || process.env.OLLAMA_HERMES_MODEL || 'hermes3:8b',
   ollamaRewriterModel: process.env.OLLAMA_REWRITER_MODEL || process.env.OLLAMA_MODEL || 'qwen3:8b',
   ollamaHermesModel: process.env.OLLAMA_HERMES_MODEL || 'hermes3:8b',
   openRouterApiKey: process.env.OPENROUTER_API_KEY || '',
-  openRouterModel: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat-v3-0324',
+  openRouterModel: process.env.OPENROUTER_MODEL || 'qwen/qwen3-235b-a22b:free',
+  openRouterResearchModel: process.env.OPENROUTER_RESEARCH_MODEL || process.env.OPENROUTER_MODEL || 'qwen/qwen3-235b-a22b:free',
+  openRouterTranslateModel: process.env.OPENROUTER_TRANSLATE_MODEL || process.env.OPENROUTER_MODEL || 'qwen/qwen3-235b-a22b:free',
+  openRouterFallbackModel: process.env.OPENROUTER_FALLBACK_MODEL || 'openrouter/auto',
 };
 
 const prisma = serviceState.databaseUrl ? new PrismaClient() : null;
@@ -169,7 +178,7 @@ async function callOllamaChat(messages, temperature = 0.2, model = serviceState.
   };
 }
 
-async function callOpenRouterChat(messages, temperature = 0.2, maxTokens = 1200) {
+async function callOpenRouterChat(messages, temperature = 0.2, maxTokens = 1200, model = serviceState.openRouterModel) {
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -179,7 +188,7 @@ async function callOpenRouterChat(messages, temperature = 0.2, maxTokens = 1200)
       'X-Title': 'OpenGuideHub',
     },
     body: JSON.stringify({
-      model: serviceState.openRouterModel,
+      model,
       messages,
       temperature,
       max_tokens: maxTokens,
@@ -205,15 +214,30 @@ async function generateAiText({ systemPrompt, userPrompt, temperature = 0.2, max
   ];
 
   const errors = [];
+  const looksLikeOpenRouterModel = (value = '') => String(value || '').includes('/');
 
   for (const provider of getAiProviderOrder()) {
     try {
       if (provider === 'ollama' && serviceState.ollamaBaseUrl && serviceState.ollamaModel) {
-        return await callOllamaChat(messages, temperature, model || serviceState.ollamaModel);
+        const ollamaModel = looksLikeOpenRouterModel(model) ? serviceState.ollamaModel : (model || serviceState.ollamaModel);
+        return await callOllamaChat(messages, temperature, ollamaModel);
       }
 
       if (provider === 'openrouter' && serviceState.openRouterApiKey) {
-        return await callOpenRouterChat(messages, temperature, maxTokens);
+        const preferredModel = looksLikeOpenRouterModel(model) ? model : serviceState.openRouterModel;
+        const candidateModels = [...new Set([preferredModel, serviceState.openRouterFallbackModel, 'openrouter/auto'])].filter(Boolean);
+
+        for (const candidate of candidateModels) {
+          try {
+            const candidateMaxTokens = candidate === 'openrouter/auto'
+              ? Math.min(maxTokens, 180)
+              : maxTokens;
+            return await callOpenRouterChat(messages, temperature, candidateMaxTokens, candidate);
+          } catch (error) {
+            errors.push(error.message);
+            log('warn', 'AI provider attempt failed', { provider, model: candidate, error: error.message });
+          }
+        }
       }
     } catch (error) {
       errors.push(error.message);
@@ -372,7 +396,7 @@ function uniqueLines(items = []) {
     if (!clean) {
       return false;
     }
-    if (/this archived article was refreshed|this topic matters because|more .* articles on openguidehub|original source from/.test(clean)) {
+    if (/this archived article was refreshed|this archived post has been reorganized|this article has been reorganized|this article is now available|this topic matters because|this matters for readers because|more .* articles on openguidehub|original source from/.test(clean)) {
       return false;
     }
     if (seen.some((existing) => existing === clean || existing.includes(clean) || clean.includes(existing))) {
@@ -403,14 +427,14 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
   ]).filter((item) => item.length > 24 && (!titleLead || !item.toLowerCase().includes(titleLead)));
 
   const tldr = sentences[0]?.slice(0, 260) || cleanEditorialLine(title) || 'A concise brief is being prepared for this article.';
-  const overview = sentences.slice(1, 3).join(' ') || 'This article has been reorganized into a cleaner editorial brief for easier reading.';
+  const overview = sentences.slice(1, 3).join(' ') || `OpenGuideHub condensed this ${String(category || 'technology').toLowerCase()} update into a shorter brief for easier reading.`;
   const bullets = sentences.slice(0, 4).map((line) => `- ${line.slice(0, 180)}`).join('\n');
   const sourceLinks = [
     `- [More ${category || 'technology'} articles on OpenGuideHub](${internalLink})`,
     sourceUrl ? `- [Original source from ${sourceLabel}](${sourceUrl})` : `- Source report: ${sourceLabel}`,
   ].filter(Boolean).join('\n');
 
-  return `## TL;DR\n${tldr}\n\n## What happened\n${overview}\n\n## Key points\n${bullets || '- The article is now available in a shorter, easier-to-read format.'}\n\n## Why it matters\nThis topic matters because it helps readers understand the key development quickly without losing the original context.\n\n## Sources and further reading\n${sourceLinks}`.trim();
+  return `## TL;DR\n${tldr}\n\n## What happened\n${overview}\n\n## Key points\n${bullets || '- The article is now available in a shorter, easier-to-read format.'}\n\n## Why it matters\nThis matters for readers following ${String(category || 'technology').toLowerCase()} because it highlights the main idea quickly while preserving the original source for deeper reading.\n\n## Sources and further reading\n${sourceLinks}`.trim();
 }
 
 async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE', sourceDomain = '' }) {
@@ -561,8 +585,37 @@ function sanitizeCoverText(value = '', maxLength = 60) {
     .slice(0, maxLength) || 'OpenGuideHub';
 }
 
+function wrapCoverTitleLines(value = '', maxLineLength = 28, maxLines = 3) {
+  const words = String(value || '').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = '';
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length <= maxLineLength || !current) {
+      current = next;
+      continue;
+    }
+
+    lines.push(current);
+    current = word;
+
+    if (lines.length === maxLines - 1) {
+      break;
+    }
+  }
+
+  if (current) {
+    const remainder = words.slice(lines.join(' ').split(/\s+/).filter(Boolean).length).join(' ');
+    const finalLine = remainder ? `${current}…` : current;
+    lines.push(finalLine);
+  }
+
+  return lines.slice(0, maxLines);
+}
+
 function createGeneratedCover(title = 'OpenGuideHub', category = 'Technology') {
-  const safeTitle = sanitizeCoverText(title, 60);
+  const safeTitle = sanitizeCoverText(title, 90);
   const safeCategory = sanitizeCoverText(category, 28);
   const palette = [
     ['#0f172a', '#2563eb'],
@@ -573,7 +626,11 @@ function createGeneratedCover(title = 'OpenGuideHub', category = 'Technology') {
   ];
   const seed = (safeTitle + safeCategory).split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
   const [bg1, bg2] = palette[seed % palette.length];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="${bg1}"/><stop offset="100%" stop-color="${bg2}"/></linearGradient></defs><rect width="1200" height="630" fill="url(#g)" rx="36"/><circle cx="1040" cy="120" r="90" fill="rgba(255,255,255,0.08)"/><circle cx="160" cy="520" r="120" fill="rgba(255,255,255,0.06)"/><text x="80" y="140" fill="#cbd5e1" font-size="28" font-family="Arial, Helvetica, sans-serif">OpenGuideHub</text><text x="80" y="230" fill="#ffffff" font-size="54" font-weight="700" font-family="Arial, Helvetica, sans-serif">${safeTitle}</text><text x="80" y="305" fill="#e2e8f0" font-size="30" font-family="Arial, Helvetica, sans-serif">${safeCategory}</text></svg>`;
+  const titleLines = wrapCoverTitleLines(safeTitle, 30, 3);
+  const titleY = 210;
+  const titleTspans = titleLines.map((line, index) => `<tspan x="80" dy="${index === 0 ? 0 : 62}">${line}</tspan>`).join('');
+  const categoryY = titleY + (titleLines.length * 62) + 28;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="${bg1}"/><stop offset="100%" stop-color="${bg2}"/></linearGradient></defs><rect width="1200" height="630" fill="url(#g)" rx="36"/><circle cx="1040" cy="120" r="90" fill="rgba(255,255,255,0.08)"/><circle cx="160" cy="520" r="120" fill="rgba(255,255,255,0.06)"/><text x="80" y="140" fill="#cbd5e1" font-size="28" font-family="Arial, Helvetica, sans-serif">OpenGuideHub</text><text x="80" y="${titleY}" fill="#ffffff" font-size="54" font-weight="700" font-family="Arial, Helvetica, sans-serif">${titleTspans}</text><text x="80" y="${categoryY}" fill="#e2e8f0" font-size="30" font-family="Arial, Helvetica, sans-serif">${safeCategory}</text></svg>`;
   try {
     return `data:image/svg+xml;base64,${Buffer.from(svg, 'utf8').toString('base64')}`;
   } catch {
@@ -839,8 +896,13 @@ app.get('/api/ai/status', (req, res) => {
     ok: true,
     primaryProvider: serviceState.aiProvider,
     ollamaConfigured: Boolean(serviceState.ollamaBaseUrl && serviceState.ollamaModel),
+    ollamaModel: serviceState.ollamaModel,
     hermesModel: serviceState.ollamaHermesModel,
     openRouterConfigured: Boolean(serviceState.openRouterApiKey),
+    openRouterModel: serviceState.openRouterModel,
+    openRouterResearchModel: serviceState.openRouterResearchModel,
+    openRouterTranslateModel: serviceState.openRouterTranslateModel,
+    openRouterFallbackModel: serviceState.openRouterFallbackModel,
     publicSiteUrl: serviceState.publicSiteUrl,
   });
 });
@@ -860,10 +922,11 @@ app.post('/api/ai/translate', async (req, res) => {
   try {
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: `You are a precise multilingual translator for OpenGuideHub. Translate the provided website or article text into ${targetLanguage} using natural, reader-friendly language. Preserve headings, bullets, links, and structure. When translating into Urdu or Arabic, use fluent right-to-left friendly phrasing. Do not add commentary or extra notes.`,
+        systemPrompt: `You are a precise multilingual translator for OpenGuideHub. Follow this guide:\n\n${MULTILINGUAL_READER_GUIDE}\n\nTranslate the provided website or article text into ${targetLanguage} using natural, reader-friendly language. Preserve headings, bullets, links, and structure. When translating into Urdu or Arabic, use fluent right-to-left friendly phrasing. Do not add commentary or extra notes.`,
         userPrompt: `Title: ${title}\n\nContent:\n${normalizedText}`,
         temperature: 0.2,
         maxTokens: 2200,
+        model: serviceState.openRouterTranslateModel,
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('AI translation timeout')), 10000)),
     ]);
@@ -913,7 +976,8 @@ app.post('/api/ai/explain', async (req, res) => {
         systemPrompt,
         userPrompt: `Article title: ${title}\n\nReader question: ${readerPrompt}\n\nArticle content:\n${normalizedContent}`,
         temperature: 0.3,
-        maxTokens: 1200,
+        maxTokens: researchMode ? 180 : 220,
+        model: researchMode ? serviceState.openRouterResearchModel : serviceState.openRouterModel,
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('AI explain timeout')), 9000)),
     ]);
