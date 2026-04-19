@@ -342,9 +342,15 @@ function extractJsonObject(text = '') {
 }
 
 async function analyzeContentMetadata({ title = '', url = '', note = '', formattedText = '', fallbackCategory = 'Technology', sourceDomain = '' }) {
+  const fallbackExcerpt = extractMeaningfulContext([
+    ...String(formattedText || '').split(/\n+/),
+    ...String(note || '').split(/\n+/),
+    title,
+  ], title)[0] || cleanEditorialLine(note) || cleanEditorialLine(title) || 'OpenGuideHub article';
+
   const fallback = {
     category: String(fallbackCategory || 'Technology'),
-    excerpt: String(note || '').trim().slice(0, 220) || String(title || '').trim(),
+    excerpt: fallbackExcerpt.slice(0, 220),
     tags: [fallbackCategory, sourceDomain].filter(Boolean),
   };
 
@@ -425,6 +431,7 @@ function cleanEditorialLine(value = '') {
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/gi, '$1')
     .replace(/https?:\/\/\S+/gi, ' ')
     .replace(/\bwww\.\S+/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
     .replace(/\b[a-z0-9.-]+\.(?:com|org|net|io|dev|app|ai|co|me)\b/gi, ' ')
     .replace(/\*\*/g, '')
     .replace(/^[#>*\-\d.\s]+/, '')
@@ -433,6 +440,19 @@ function cleanEditorialLine(value = '') {
     .replace(/[\[\]()|]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function isNonContentLine(value = '') {
+  const clean = cleanEditorialLine(value).toLowerCase();
+  if (!clean) {
+    return true;
+  }
+
+  return /^(rss|share|save|translate|english)$/.test(clean)
+    || /read this post in any language|ask the article assistant|translate into|explain this (ai research )?article|explain this post/.test(clean)
+    || /source context|this archived article was refreshed|this archived post has been reorganized|this article has been reorganized|this article is now available|this topic matters because|this matters for readers because|this matters for builders and researchers because|openguidehub condensed this|brief roundup of the day's top ai stories|free tools and downloads|continue exploring|sources and further reading|read here\b/.test(clean)
+    || /more .* (guides|articles) on openguidehub/.test(clean)
+    || /original .* article on |original source from|source report/.test(clean);
 }
 
 function isWeakSummaryLine(value = '') {
@@ -455,10 +475,7 @@ function uniqueLines(items = []) {
   const seen = [];
   return items.filter((item) => {
     const clean = cleanEditorialLine(item).toLowerCase();
-    if (!clean) {
-      return false;
-    }
-    if (/this archived article was refreshed|this archived post has been reorganized|this article has been reorganized|this article is now available|this topic matters because|this matters for readers because|this matters for builders and researchers because|openguidehub condensed this|brief roundup of the day's top ai stories|free tools and downloads|more .* articles on openguidehub|original source from|rss\b|source report|original article|read full original article here|read here\b|^artificial intelligence$/.test(clean) || isWeakSummaryLine(clean)) {
+    if (!clean || isNonContentLine(clean) || isWeakSummaryLine(clean)) {
       return false;
     }
     if (seen.some((existing) => existing === clean || existing.includes(clean) || clean.includes(existing))) {
@@ -466,6 +483,65 @@ function uniqueLines(items = []) {
     }
     seen.push(clean);
     return true;
+  });
+}
+
+function sanitizeStructuredMarkdown(content = '', title = '') {
+  const titleClean = cleanEditorialLine(title).toLowerCase();
+  const seen = new Set();
+  const lines = [];
+  let previousBlank = true;
+
+  String(content || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .forEach((rawLine) => {
+      const line = rawLine.trimEnd();
+      const trimmed = line.trim();
+
+      if (!trimmed) {
+        if (!previousBlank && lines.length) {
+          lines.push('');
+        }
+        previousBlank = true;
+        return;
+      }
+
+      previousBlank = false;
+      const clean = cleanEditorialLine(trimmed).toLowerCase();
+
+      if (titleClean && clean === titleClean) {
+        return;
+      }
+      if (/^(rss|share|save|translate|english)$/i.test(trimmed)) {
+        return;
+      }
+      if (/read this post in any language|ask the article assistant|translate into|explain this (ai research )?article|explain this post/i.test(clean)) {
+        return;
+      }
+
+      const dedupeKey = /^#+\s/.test(trimmed) ? `heading:${trimmed.toLowerCase()}` : clean;
+      if (dedupeKey && seen.has(dedupeKey)) {
+        return;
+      }
+
+      seen.add(dedupeKey);
+      lines.push(trimmed);
+    });
+
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function hasStructuredMarkdown(content = '') {
+  return /##\s*TL;DR/i.test(content)
+    && /##\s*(Key points|Why it matters|What happened|What this AI update says|Steps to know|Risk to know|Project snapshot)/i.test(content);
+}
+
+function extractMeaningfulContext(items = [], title = '') {
+  const titleClean = cleanEditorialLine(title).toLowerCase();
+  return uniqueLines(items).filter((item) => {
+    const clean = cleanEditorialLine(item).toLowerCase();
+    return Boolean(clean) && clean.length > 24 && (!titleClean || clean !== titleClean);
   });
 }
 
@@ -549,6 +625,7 @@ function extractFocusPhrase(title = '', note = '', category = '') {
     'have', 'has', 'using', 'used', 'guide', 'news', 'update', 'article', 'brief', 'quick',
     'take', 'what', 'why', 'more', 'read', 'full', 'here', 'been', 'than', 'they', 'them',
     'their', 'main', 'next', 'step', 'just', 'when', 'where', 'build', 'built',
+    'looking', 'collaborators', 'collaboration', 'agnostic',
   ]);
   const genericWords = new Set([
     'useful', 'helpful', 'simple', 'easier', 'easy', 'official', 'example', 'examples',
@@ -624,21 +701,20 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
   const titleLead = normalizedTitle.split(/\s+/).slice(0, 6).join(' ');
   const template = getCategoryTemplate(category);
   const focusPhrase = extractFocusPhrase(title, note, category);
-  const sentences = uniqueLines([
+  const sentences = extractMeaningfulContext([
     ...toSentenceList(formattedText),
     ...toSentenceList(note),
     cleanEditorialLine(title),
-  ]).filter((item) => item.length > 24 && (!titleLead || !item.toLowerCase().includes(titleLead)));
+  ], title).filter((item) => !titleLead || !item.toLowerCase().includes(titleLead));
 
-  const tldr = highlightPhrase(
-    sentences[0]?.slice(0, 260) || cleanEditorialLine(title) || 'A concise brief is being prepared for this article.',
-    focusPhrase,
-  );
+  const tldrSource = sentences[0]?.slice(0, 260) || cleanEditorialLine(note) || cleanEditorialLine(title) || 'A concise brief is being prepared for this article.';
+  const tldr = highlightPhrase(tldrSource, focusPhrase);
   const overviewLead = `OpenGuideHub condensed this ${String(category || 'technology').toLowerCase()} update into a shorter brief for easier reading.`;
-  const overviewDetail = highlightPhrase(
-    sentences.slice(1, 3).join(' ') || cleanEditorialLine(note) || cleanEditorialLine(title),
-    focusPhrase,
-  );
+  let overviewText = sentences.slice(1, 3).join(' ') || cleanEditorialLine(note) || '';
+  if (!overviewText || cleanEditorialLine(overviewText).toLowerCase() === cleanEditorialLine(tldrSource).toLowerCase()) {
+    overviewText = `This brief captures the main context around ${focusPhrase || String(category || 'technology').toLowerCase()} and keeps the original source linked below.`;
+  }
+  const overviewDetail = highlightPhrase(overviewText, focusPhrase);
   const labels = ['Key idea', 'Why now', 'Main detail', 'What to watch'];
   const bullets = sentences.slice(0, 4).map((line, index) => `- **${labels[index] || 'Note'}:** ${line.slice(0, 180)}`).join('\n');
   const toolLinks = buildToolLinksMarkdown(category);
@@ -654,17 +730,21 @@ async function buildPublishedArticleContent({ title = '', url = '', note = '', f
   const sourceUrl = normalizePublicUrl(url);
   const sourceLine = sourceUrl ? `Original source: ${sourceUrl}` : 'No external backlink available.';
   const internalLink = `${serviceState.publicSiteUrl}/articles?category=${slugify(category || 'technology')}`;
-  const baseText = uniqueLines([
-    ...String(formattedText || '').split(/\n+/),
+  const sanitizedFormattedText = sanitizeStructuredMarkdown(formattedText, title);
+  const baseText = extractMeaningfulContext([
+    ...String(sanitizedFormattedText || '').split(/\n+/),
     ...String(note || '').split(/\n+/),
-  ]).join('\n').trim();
-  const fallback = buildStructuredFallbackContent({ title, url: sourceUrl, note, formattedText: baseText, category, sourceDomain });
+  ], title).join('\n').trim();
+  const fallback = hasStructuredMarkdown(sanitizedFormattedText) && extractMeaningfulContext(String(sanitizedFormattedText || '').split(/\n+/), title).length >= 2
+    ? sanitizedFormattedText
+    : buildStructuredFallbackContent({ title, url: sourceUrl, note, formattedText: `${sanitizedFormattedText}\n${baseText}`.trim(), category, sourceDomain });
+  const rewriteSource = baseText || sanitizedFormattedText;
 
-  if (!serviceState.aiRewriteOnPublish || !baseText) {
+  if (!serviceState.aiRewriteOnPublish || !rewriteSource) {
     return fallback;
   }
 
-  if (baseText.length > 7000) {
+  if (rewriteSource.length > 7000) {
     return fallback;
   }
 
@@ -672,7 +752,7 @@ async function buildPublishedArticleContent({ title = '', url = '', note = '', f
     const result = await Promise.race([
       generateAiText({
         systemPrompt: `You are the OpenGuideHub editorial formatter agent. Follow this exact house style:\n\n${EDITORIAL_STYLE_GUIDE}\n\nUse the matching category and language template from this guide:\n\n${CONTENT_BOILERPLATES_GUIDE}`,
-        userPrompt: `Create a polished article from this source material.\n\nTitle: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\nExternal source line: ${sourceLine}\n\nRules:\n- choose the best category boilerplate\n- output only Markdown\n- use clear paragraph spacing under each heading\n- keep hyperlinks wrapped in readable anchor text and never leave naked URLs in the body\n- use 2 to 4 ==highlighted phrases== for the most important terms\n- strengthen SEO naturally with heading language, source-aware anchor text, and keyword variations from the title\n- bold important words and ideas\n- include a short Free tools and downloads section with official free or open-source links when relevant\n\nSource material:\n${baseText}`,
+        userPrompt: `Create a polished article from this source material.\n\nTitle: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\nExternal source line: ${sourceLine}\n\nRules:\n- choose the best category boilerplate\n- output only Markdown\n- use clear paragraph spacing under each heading\n- keep hyperlinks wrapped in readable anchor text and never leave naked URLs in the body\n- use 2 to 4 ==highlighted phrases== for the most important terms\n- strengthen SEO naturally with heading language, source-aware anchor text, and keyword variations from the title\n- bold important words and ideas\n- include a short Free tools and downloads section with official free or open-source links when relevant\n\nSource material:\n${rewriteSource}`,
         temperature: 0.3,
         maxTokens: 900,
         model: serviceState.ollamaRewriterModel,

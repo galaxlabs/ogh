@@ -104,6 +104,37 @@ function slugifyHeading(value = '') {
     .slice(0, 80);
 }
 
+function stripRepeatedTitleFromContent(content = '', title = '') {
+  const normalizedTitle = String(title || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  if (!normalizedTitle) {
+    return String(content || '');
+  }
+
+  const cleanedLines = [];
+  let removedTitle = false;
+
+  String(content || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .forEach((line) => {
+      const normalizedLine = String(line || '')
+        .replace(/^#+\s*/, '')
+        .replace(/\*\*/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+
+      if (!removedTitle && normalizedLine === normalizedTitle) {
+        removedTitle = true;
+        return;
+      }
+
+      cleanedLines.push(line);
+    });
+
+  return cleanedLines.join('\n').replace(/^\s+/, '');
+}
+
 function buildSeoKeywords(article) {
   const values = [
     article?.title,
@@ -349,7 +380,7 @@ function ArticleDetailPage() {
   const relatedArticles = allArticles.filter(a => a.category === article.category && a.id !== article.id).slice(0, 3);
   const categoryStats = buildCategoryStats(categories, allArticles);
   const articleUrl = `https://openguidehub.org/articles/${article.slug}`;
-  const articleContent = translatedContent || article.content;
+  const articleContent = stripRepeatedTitleFromContent(translatedContent || article.content, article.title);
   const seoKeywords = buildSeoKeywords(article);
   const articleSchema = {
     '@context': 'https://schema.org',
