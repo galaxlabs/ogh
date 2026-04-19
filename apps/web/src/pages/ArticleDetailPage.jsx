@@ -80,15 +80,15 @@ function normalizeStructuredContent(content = '') {
   return String(content || '')
     .replace(/\r\n/g, '\n')
     .replace(/(^|\n)\s*##\s*(?=\n)/g, '$1')
-    .replace(/([.!?])\s+(TL;DR|What happened|What this AI update says|Steps to know|Risk to know|Project snapshot|Key points|Why it matters|Continue exploring|Free tools and downloads|Sources and further reading)\s*:?\s*/gi, '$1\n\n## $2\n')
-    .replace(/##\s*\n+\s*(TL;DR|What happened|What this AI update says|Steps to know|Risk to know|Project snapshot|Key points|Why it matters|Continue exploring|Free tools and downloads|Sources and further reading)\b/gi, '## $1')
+    .replace(/([.!?])\s+(TL;DR|What happened|What this AI update says|Steps to know|Risk to know|Project snapshot|Key points|Why it matters|Continue exploring|Download section|Free tools and downloads|Sources and further reading|یہ ٹیوٹوریل کس بارے میں ہے|مرحلہ وار رہنمائی|اہم نکات|یہ کیوں اہم ہے|ڈاؤن لوڈ سیکشن|ماخذ اور مزید مطالعہ)\s*:?\s*/gi, '$1\n\n## $2\n')
+    .replace(/##\s*\n+\s*(TL;DR|What happened|What this AI update says|Steps to know|Risk to know|Project snapshot|Key points|Why it matters|Continue exploring|Download section|Free tools and downloads|Sources and further reading|یہ ٹیوٹوریل کس بارے میں ہے|مرحلہ وار رہنمائی|اہم نکات|یہ کیوں اہم ہے|ڈاؤن لوڈ سیکشن|ماخذ اور مزید مطالعہ)\b/gi, '## $1')
     .replace(/(^|\n)\s*(TL;DR)\s*:?\s*(?!\n)/gi, '$1## TL;DR\n')
-    .replace(/(^|\n)\s*(What happened|What this AI update says|Steps to know|Risk to know|Project snapshot)\s*:?\s*(?!\n)/gi, '$1## $2\n')
-    .replace(/(^|\n)\s*(Key points)\s*[-:]?\s*/gi, '$1## Key points\n- ')
-    .replace(/(^|\n)\s*(Why it matters)\s*:?\s*(?!\n)/gi, '$1## Why it matters\n')
-    .replace(/(^|\n)\s*(Continue exploring)\s*:?\s*(?!\n)/gi, '$1## Continue exploring\n')
+    .replace(/(^|\n)\s*(What happened|What this AI update says|Steps to know|Risk to know|Project snapshot|یہ ٹیوٹوریل کس بارے میں ہے|مرحلہ وار رہنمائی)\s*:?\s*(?!\n)/gi, '$1## $2\n')
+    .replace(/(^|\n)\s*(Key points|اہم نکات)\s*[-:]?\s*/gi, '$1## $2\n- ')
+    .replace(/(^|\n)\s*(Why it matters|یہ کیوں اہم ہے)\s*:?\s*(?!\n)/gi, '$1## $2\n')
+    .replace(/(^|\n)\s*(Continue exploring|ڈاؤن لوڈ سیکشن|Download section)\s*:?\s*(?!\n)/gi, '$1## $2\n')
     .replace(/(^|\n)\s*(Free tools and downloads)\s*[-:]?\s*/gi, '$1## Free tools and downloads\n- ')
-    .replace(/(^|\n)\s*(Sources and further reading)\s*[-:]?\s*/gi, '$1## Sources and further reading\n- ')
+    .replace(/(^|\n)\s*(Sources and further reading|ماخذ اور مزید مطالعہ)\s*[-:]?\s*/gi, '$1## $2\n- ')
     .replace(/\s+- \[/g, '\n- [')
     .replace(/\s+- Source report:/g, '\n- Source report:')
     .replace(/\n-\s*-\s+/g, '\n- ')
@@ -467,25 +467,6 @@ function ArticleDetailPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2 mb-8">
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Share2 className="h-4 w-4" />
-                      Share
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Bookmark className="h-4 w-4" />
-                      Save
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Twitter className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Facebook className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Linkedin className="h-4 w-4" />
-                    </Button>
-                  </div>
                 </div>
 
                 <img
@@ -526,29 +507,6 @@ function ArticleDetailPage() {
                     <p className="text-sm text-muted-foreground">{translationNotice}</p>
                   )}
 
-                  <div className="grid gap-3">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <Bot className="h-4 w-4 text-primary" />
-                      Ask the article assistant
-                    </label>
-                    <Textarea
-                      value={aiQuestion}
-                      onChange={(event) => setAiQuestion(event.target.value)}
-                      rows={3}
-                      placeholder="Ask for examples, simpler wording, or a quick summary"
-                    />
-                    <div>
-                      <Button onClick={() => handleAskAi(article)} disabled={aiLoading} variant="outline" className="gap-2">
-                        {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
-                        Explain this post
-                      </Button>
-                    </div>
-                    {aiAnswer && (
-                      <div className="rounded-xl bg-background p-4 text-sm leading-6 whitespace-pre-wrap border">
-                        {aiAnswer}
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 <div className="article-reading prose prose-lg max-w-none mb-12">

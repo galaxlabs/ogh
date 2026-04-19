@@ -413,9 +413,9 @@ function HomePage() {
 
           <section className="py-20 bg-muted/30">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">WordPress-style downloadable CMS</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Categorized software downloads</h2>
               <p className="text-muted-foreground mb-8 text-lg">
-                Manage articles, pages, categories, and downloadable files in one content workflow.
+                Find organized download resources for AI tools, programming guides, security software, and Urdu-first tutorials.
               </p>
               <Link to="/downloads">
                 <Button size="lg" className="gap-2">

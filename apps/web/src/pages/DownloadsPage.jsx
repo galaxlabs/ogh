@@ -6,7 +6,7 @@ import { Download, FileText, LayoutDashboard, Package, ArrowRight } from 'lucide
 import Header from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import { getTranslation } from '@/data/i18n.js';
-import { downloadResources, cmsHighlights } from '@/data/downloads.js';
+import { downloadResources, downloadCategories } from '@/data/downloads.js';
 
 function DownloadsPage() {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -28,7 +28,7 @@ function DownloadsPage() {
         <title>Downloads | OpenGuideHub</title>
         <meta
           name="description"
-          content="Download templates, guides, and CMS starter resources from OpenGuideHub."
+          content="Browse categorized software, AI tool, security, and Urdu tutorial downloads on OpenGuideHub."
         />
       </Helmet>
 
@@ -44,12 +44,12 @@ function DownloadsPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
               <div className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium mb-6 bg-background/80">
                 <LayoutDashboard className="h-4 w-4 text-primary" />
-                WordPress-like CMS Mode
+                Categorized Software Downloads
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-4">Downloadable CMS Resource Center</h1>
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">Software and Tutorial Download Center</h1>
               <p className="text-lg text-muted-foreground max-w-3xl mx-auto mb-8">
-                This project now supports a WordPress-style content model with downloadable resources,
-                guides, templates, and admin-managed content workflows.
+                Browse clean, categorized download resources for software posts, AI tools, programming guides,
+                and Urdu-first tutorials without cluttered external links inside articles.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a href="#downloads-list">
@@ -68,7 +68,7 @@ function DownloadsPage() {
           <section className="py-16">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="grid md:grid-cols-3 gap-6">
-                {cmsHighlights.map((item) => (
+                {downloadCategories.map((item) => (
                   <div key={item.title} className="rounded-2xl border bg-card p-6 shadow-sm">
                     <Package className="h-8 w-8 text-primary mb-4" />
                     <h2 className="text-xl font-semibold mb-2">{item.title}</h2>
@@ -82,32 +82,48 @@ function DownloadsPage() {
           <section id="downloads-list" className="py-16 bg-muted/30">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="mb-10 text-center">
-                <h2 className="text-3xl font-bold mb-3">Starter Downloads</h2>
+                <h2 className="text-3xl font-bold mb-3">Download Library</h2>
                 <p className="text-muted-foreground">
-                  Download working content resources and use them as the foundation for your CMS workflow.
+                  Resources are grouped by software category so articles can stay readable while downloads stay organized.
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {downloadResources.map((resource) => (
-                  <div key={resource.id} className="rounded-2xl border bg-background p-6 shadow-sm flex flex-col">
-                    <FileText className="h-10 w-10 text-primary mb-4" />
-                    <div className="flex-1">
-                      <p className="text-sm text-primary font-medium mb-2">{resource.type}</p>
-                      <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
-                      <p className="text-muted-foreground mb-4">{resource.description}</p>
-                      <div className="text-sm text-muted-foreground mb-4">
-                        Format: {resource.format} • Size: {resource.size}
+              <div className="space-y-10">
+                {downloadCategories.map((category) => {
+                  const resources = downloadResources.filter((resource) => resource.category === category.title);
+                  if (!resources.length) return null;
+
+                  return (
+                    <section key={category.title} className="space-y-4">
+                      <div>
+                        <h3 className="text-2xl font-semibold">{category.title}</h3>
+                        <p className="text-muted-foreground">{category.description}</p>
                       </div>
-                    </div>
-                    <a href={resource.href} download>
-                      <Button className="w-full gap-2">
-                        <Download className="h-4 w-4" />
-                        Download
-                      </Button>
-                    </a>
-                  </div>
-                ))}
+
+                      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {resources.map((resource) => (
+                          <div key={resource.id} className="rounded-2xl border bg-background p-6 shadow-sm flex flex-col">
+                            <FileText className="h-10 w-10 text-primary mb-4" />
+                            <div className="flex-1">
+                              <p className="text-sm text-primary font-medium mb-2">{resource.type}</p>
+                              <h4 className="text-xl font-semibold mb-2">{resource.title}</h4>
+                              <p className="text-muted-foreground mb-4">{resource.description}</p>
+                              <div className="text-sm text-muted-foreground mb-4">
+                                Format: {resource.format} • Size: {resource.size}
+                              </div>
+                            </div>
+                            <a href={resource.href} download>
+                              <Button className="w-full gap-2">
+                                <Download className="h-4 w-4" />
+                                Download
+                              </Button>
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
               </div>
             </div>
           </section>

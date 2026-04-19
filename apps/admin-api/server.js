@@ -558,30 +558,52 @@ function toSentenceList(value = '') {
     .filter(Boolean);
 }
 
+function isTutorialCategory(category = '', title = '', note = '') {
+  const sample = `${category} ${title} ${note}`.toLowerCase();
+  return /(tutorial|programming|how-to|web development|\bhow to\b|\bhow\b|\binstall\b|\bsetup\b|set up|\bguide\b|step-by-step|running on)/.test(sample);
+}
+
+function needsDownloadSection(category = '') {
+  return /(artificial intelligence|ai agents|ai tools|tutorial|programming|web development|foss|open source|repo review|technology)/.test(String(category || '').toLowerCase());
+}
+
+function getDownloadCategorySlug(category = '') {
+  const key = String(category || '').toLowerCase();
+  if (/(artificial intelligence|ai agents|ai tools)/.test(key)) return 'ai-tools';
+  if (/(tutorial|programming|how-to|web development)/.test(key)) return 'programming';
+  if (/(cyber|security)/.test(key)) return 'security';
+  if (/(foss|open source|repo review)/.test(key)) return 'open-source';
+  return 'featured';
+}
+
+function buildDownloadLinksMarkdown(category = '', absolute = false) {
+  const slug = getDownloadCategorySlug(category);
+  const baseUrl = absolute ? `${serviceState.publicSiteUrl}` : '';
+  const href = `${baseUrl}/downloads?category=${slug}`;
+  const labelMap = {
+    'ai-tools': 'Browse AI tools downloads',
+    'programming': 'Browse programming downloads',
+    'security': 'Browse security downloads',
+    'open-source': 'Browse open-source downloads',
+    featured: 'Browse featured downloads',
+  };
+  return [`- [${labelMap[slug] || 'Browse downloads on OpenGuideHub'}](${href})`].join('\n');
+}
+
 function getCategoryTemplate(category = '') {
   const key = String(category || '').toLowerCase();
 
   if (/(artificial intelligence|ai agents|ai tools)/.test(key)) {
     return {
       summaryHeading: 'What this AI update says',
-      whyText: 'This matters for builders and researchers because it highlights the main model idea, trade-offs, and next practical step quickly.',
-      tools: [
-        { label: 'Ollama download', url: 'https://ollama.com/download' },
-        { label: 'Open WebUI project', url: 'https://github.com/open-webui/open-webui' },
-        { label: 'JupyterLab', url: 'https://jupyter.org/install' },
-      ],
+      whyText: 'This helps readers understand what the tool does, where it fits, and what practical benefit it offers.',
     };
   }
 
-  if (/(tutorial|programming|how-to|web development)/.test(key)) {
+  if (isTutorialCategory(category)) {
     return {
-      summaryHeading: 'Steps to know',
-      whyText: 'This helps learners move from theory to practice faster with a clearer step-by-step reading flow.',
-      tools: [
-        { label: 'Visual Studio Code', url: 'https://code.visualstudio.com/Download' },
-        { label: 'Git downloads', url: 'https://git-scm.com/downloads' },
-        { label: 'Node.js', url: 'https://nodejs.org/en/download' },
-      ],
+      summaryHeading: 'یہ ٹیوٹوریل کس بارے میں ہے',
+      whyText: 'یہ حصہ قارئین کو آسان الفاظ میں سمجھاتا ہے کہ یہ گائیڈ کیوں مفید ہے اور عملی طور پر آگے کیا کرنا ہے۔',
     };
   }
 
@@ -589,40 +611,20 @@ function getCategoryTemplate(category = '') {
     return {
       summaryHeading: 'Risk to know',
       whyText: 'This matters for safety-minded readers because it explains the risk, the signal to watch, and the safer next move.',
-      tools: [
-        { label: 'Wireshark', url: 'https://www.wireshark.org/download.html' },
-        { label: 'KeePassXC', url: 'https://keepassxc.org/download/' },
-        { label: 'ClamAV', url: 'https://www.clamav.net/downloads' },
-      ],
     };
   }
 
   if (/(foss|open source|repo review)/.test(key)) {
     return {
-      summaryHeading: 'Project snapshot',
-      whyText: 'This matters for the open-source community because it highlights practical value, adoption signals, and where to explore next.',
-      tools: [
-        { label: 'GitHub Desktop', url: 'https://desktop.github.com/download/' },
-        { label: 'LibreOffice', url: 'https://www.libreoffice.org/download/download-libreoffice/' },
-        { label: 'GIMP', url: 'https://www.gimp.org/downloads/' },
-      ],
+      summaryHeading: 'Software snapshot',
+      whyText: 'This gives a clearer picture of the software, its use case, and where readers can explore related downloads safely.',
     };
   }
 
   return {
     summaryHeading: 'What happened',
     whyText: 'This matters for readers because it surfaces the key idea quickly and keeps the original source available for deeper reading.',
-    tools: [
-      { label: 'Firefox browser', url: 'https://www.mozilla.org/firefox/new/' },
-      { label: 'LibreOffice', url: 'https://www.libreoffice.org/download/download-libreoffice/' },
-      { label: 'VLC media player', url: 'https://www.videolan.org/vlc/' },
-    ],
   };
-}
-
-function buildToolLinksMarkdown(category = '') {
-  const template = getCategoryTemplate(category);
-  return template.tools.map((tool) => `- [${tool.label}](${tool.url})`).join('\n');
 }
 
 function extractFocusPhrase(title = '', note = '', category = '') {
@@ -705,7 +707,8 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
   const internalLink = `${serviceState.publicSiteUrl}/articles?category=${slugify(category || 'technology')}`;
   const normalizedTitle = cleanEditorialLine(title).toLowerCase();
   const titleLead = normalizedTitle.split(/\s+/).slice(0, 6).join(' ');
-  const template = getCategoryTemplate(category);
+  const tutorialMode = isTutorialCategory(category, title, note);
+  const template = getCategoryTemplate(tutorialMode ? 'Tutorials' : category);
   const focusPhrase = extractFocusPhrase(title, note, category);
   const sentences = extractMeaningfulContext([
     ...toSentenceList(formattedText),
@@ -715,21 +718,34 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
 
   const tldrSource = sentences[0]?.slice(0, 260) || cleanEditorialLine(note) || cleanEditorialLine(title) || 'A concise brief is being prepared for this article.';
   const tldr = highlightPhrase(tldrSource, focusPhrase);
-  const overviewLead = `OpenGuideHub condensed this ${String(category || 'technology').toLowerCase()} update into a shorter brief for easier reading.`;
+  const overviewLead = tutorialMode
+    ? 'یہ گائیڈ موضوع کو آسان اور مرحلہ وار انداز میں سمجھانے کے لیے تیار کی گئی ہے۔'
+    : `OpenGuideHub condensed this ${String(category || 'technology').toLowerCase()} update into a clear, readable brief.`;
   let overviewText = sentences.slice(1, 3).join(' ') || cleanEditorialLine(note) || '';
   if (!overviewText || cleanEditorialLine(overviewText).toLowerCase() === cleanEditorialLine(tldrSource).toLowerCase()) {
-    overviewText = `This brief captures the main context around ${focusPhrase || String(category || 'technology').toLowerCase()} and keeps the original source linked below.`;
+    overviewText = tutorialMode
+      ? `یہ خلاصہ ${focusPhrase || 'موضوع'} کے بنیادی مقصد، استعمال، اور اگلے قدم کو مختصر انداز میں پیش کرتا ہے۔`
+      : `This brief captures the main context around ${focusPhrase || String(category || 'technology').toLowerCase()} and keeps the original source linked below.`;
   }
   const overviewDetail = highlightPhrase(overviewText, focusPhrase);
-  const labels = ['Key idea', 'Why now', 'Main detail', 'What to watch'];
+  const labels = tutorialMode
+    ? ['پہلا نکتہ', 'اگلا مرحلہ', 'اہم تفصیل', 'نوٹ']
+    : ['Key idea', 'Why now', 'Main detail', 'What to watch'];
   const bullets = sentences.slice(0, 4).map((line, index) => `- **${labels[index] || 'Note'}:** ${line.slice(0, 180)}`).join('\n');
-  const toolLinks = buildToolLinksMarkdown(category);
   const sourceLinks = [
     `- [More ${focusPhrase || category || 'technology'} guides on OpenGuideHub](${internalLink})`,
     sourceUrl ? `- [Original ${sourceLabel} article on ${focusPhrase || 'this topic'}](${sourceUrl})` : `- Source report: ${sourceLabel}`,
   ].filter(Boolean).join('\n');
 
-  return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overviewLead}\n\n${overviewDetail}\n\n## Key points\n${bullets || '- **Summary:** The article is now available in a shorter, easier-to-read format.'}\n\n## Why it matters\n${template.whyText}\n\n## Free tools and downloads\n${toolLinks}\n\n## Sources and further reading\n${sourceLinks}`.trim();
+  if (tutorialMode) {
+    return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overviewLead}\n\n${overviewDetail}\n\n## مرحلہ وار رہنمائی\n1. پہلے موضوع یا ٹول کا مقصد سمجھیں۔\n2. پھر بنیادی مراحل ایک ایک کر کے فالو کریں۔\n3. آخر میں متعلقہ ڈاؤن لوڈ سیکشن اور اصل سورس دیکھیں۔\n\n## اہم نکات\n${bullets || '- **خلاصہ:** یہ ٹیوٹوریل اب زیادہ واضح انداز میں پیش کیا گیا ہے۔'}\n\n## یہ کیوں اہم ہے\n${template.whyText}\n\n## ڈاؤن لوڈ سیکشن\n${buildDownloadLinksMarkdown(category)}\n\n## ماخذ اور مزید مطالعہ\n${sourceLinks}`.trim();
+  }
+
+  const downloadSection = needsDownloadSection(category)
+    ? `\n\n## Download section\n${buildDownloadLinksMarkdown(category)}`
+    : '';
+
+  return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overviewLead}\n\n${overviewDetail}\n\n## Key points\n${bullets || '- **Summary:** The article is now available in a shorter, easier-to-read format.'}\n\n## Why it matters\n${template.whyText}${downloadSection}\n\n## Continue exploring\n- [More ${focusPhrase || category || 'technology'} guides on OpenGuideHub](${internalLink})\n\n## Sources and further reading\n${sourceLinks}`.trim();
 }
 
 async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE', sourceDomain = '' }) {
@@ -759,7 +775,7 @@ async function buildPublishedArticleContent({ title = '', url = '', note = '', f
     const result = await Promise.race([
       generateAiText({
         systemPrompt: `You are the OpenGuideHub editorial formatter agent. Follow this exact house style:\n\n${EDITORIAL_STYLE_GUIDE}\n\nUse the matching category and language template from this guide:\n\n${CONTENT_BOILERPLATES_GUIDE}`,
-        userPrompt: `Create a polished article from this source material.\n\nTitle: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\nExternal source line: ${sourceLine}\n\nRules:\n- choose the best category boilerplate\n- output only Markdown\n- use clear paragraph spacing under each heading\n- keep hyperlinks wrapped in readable anchor text and never leave naked URLs in the body\n- use 2 to 4 ==highlighted phrases== for the most important terms\n- strengthen SEO naturally with heading language, source-aware anchor text, and keyword variations from the title\n- bold important words and ideas\n- include a short Free tools and downloads section with official free or open-source links when relevant\n\nSource material:\n${rewriteSource}`,
+        userPrompt: `Create a polished article from this source material.\n\nTitle: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\nExternal source line: ${sourceLine}\n\nRules:\n- choose the best category boilerplate\n- output only Markdown\n- use clear paragraph spacing under each heading\n- make the writing detailed, human-readable, and easy to understand\n- do not repeat the title or the same sentence across sections\n- keep hyperlinks wrapped in readable anchor text and never leave naked URLs in the body\n- never place direct software download URLs inside the article body; use an internal Download section linking to /downloads?category=<category-slug> instead\n- for Tutorials or Programming posts, write the main body in simple Urdu while keeping technical terms in English when needed\n- use clear tutorial sections when the post is a how-to guide\n- use 2 to 4 ==highlighted phrases== for the most important terms\n- strengthen SEO naturally with heading language, source-aware anchor text, and keyword variations from the title\n- bold important words and ideas\n\nSource material:\n${rewriteSource}`,
         temperature: 0.3,
         maxTokens: 900,
         model: serviceState.ollamaRewriterModel,
