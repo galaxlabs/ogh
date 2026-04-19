@@ -22,6 +22,10 @@ Every article must explain at least these points in plain language:
 
 If the source is thin, use careful contextual explanation from the title and category instead of repeating the title.
 
+Additional rules by content family:
+- If the source is a repository or release page, explain the project purpose, likely workflow, and any install or release cues only when they are actually supported by the source.
+- If the source is research or arXiv-like, explain the problem in plain language and mention preprint or early-stage caution when appropriate.
+
 ## Required structure
 Use a category-aware Markdown structure. Pick the best-fitting heading set for the article.
 

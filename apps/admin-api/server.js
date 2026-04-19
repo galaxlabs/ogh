@@ -18,6 +18,10 @@ const editorialStyleFile = path.join(__dirname, 'editorial-style-guide.md');
 const researchExplainerFile = path.join(__dirname, 'ai-research-explainer-skill.md');
 const multilingualReaderFile = path.join(__dirname, 'multilingual-reader-skill.md');
 const boilerplateTemplatesFile = path.join(__dirname, 'content-boilerplates.md');
+const repoReviewSkillFile = path.join(__dirname, 'github-repo-review-skill.md');
+const dailyScoutSkillFile = path.join(__dirname, 'daily-awesome-foss-scout-skill.md');
+const qualityValidatorSkillFile = path.join(__dirname, 'article-quality-validator-skill.md');
+const publishingStandardFile = path.join(__dirname, 'publishing-standard.md');
 
 fs.mkdirSync(logDir, { recursive: true });
 fs.mkdirSync(backupDir, { recursive: true });
@@ -48,6 +52,26 @@ const MULTILINGUAL_READER_GUIDE = loadGuideFile(
 const CONTENT_BOILERPLATES_GUIDE = loadGuideFile(
   boilerplateTemplatesFile,
   'Use category-aware templates with clean headings, bold key ideas, free tool links, and wrapped internal/external links.'
+);
+
+const GITHUB_REPO_REVIEW_GUIDE = loadGuideFile(
+  repoReviewSkillFile,
+  'Review repository pages by explaining what the project is, what problem it solves, how the workflow works, and where readers can learn more.'
+);
+
+const DAILY_AWESOME_FOSS_SCOUT_GUIDE = loadGuideFile(
+  dailyScoutSkillFile,
+  'Prefer practical free and open-source tools, AI agents, bots, and releases with real user value and clear source attribution.'
+);
+
+const ARTICLE_QUALITY_VALIDATOR_GUIDE = loadGuideFile(
+  qualityValidatorSkillFile,
+  'Ensure the article does not repeat itself, explains what the topic is and why it matters, and keeps readable wrapped links plus source attribution.'
+);
+
+const PUBLISHING_STANDARD_GUIDE = loadGuideFile(
+  publishingStandardFile,
+  'Write complete articles with clear context, short paragraphs, useful headings, clean Markdown, and natural rewritten wording.'
 );
 
 app.use(cors());
@@ -282,6 +306,40 @@ function isAiResearchContent(title = '', content = '') {
   return /(arxiv|llm|large language model|transformer|neural network|diffusion|benchmark|fine-tun|agentic|artificial intelligence|machine learning)/i.test(sample);
 }
 
+function isRepoLikeContent({ title = '', url = '', category = '', sourceDomain = '', formattedText = '' } = {}) {
+  const sample = `${title} ${url} ${category} ${sourceDomain} ${formattedText}`.toLowerCase();
+  return /(github\.com|gitlab\.com|repository|repo\b|release\b|changelog|readme|package|pip install|npm install|cargo install|go install|brew install|docker)/i.test(sample);
+}
+
+function isDailyScoutContent({ category = '', url = '', sourceDomain = '', formattedText = '' } = {}) {
+  const sample = `${category} ${url} ${sourceDomain} ${formattedText}`.toLowerCase();
+  return /(artificial intelligence|ai agents|ai tools|foss|open source|repo review|github\.com|gitlab\.com|release\b)/i.test(sample);
+}
+
+function buildActiveGuides({ title = '', url = '', category = '', sourceDomain = '', formattedText = '' } = {}) {
+  const guides = [
+    PUBLISHING_STANDARD_GUIDE,
+    EDITORIAL_STYLE_GUIDE,
+    CONTENT_BOILERPLATES_GUIDE,
+    ARTICLE_QUALITY_VALIDATOR_GUIDE,
+    MULTILINGUAL_READER_GUIDE,
+  ];
+
+  if (isDailyScoutContent({ category, url, sourceDomain, formattedText })) {
+    guides.push(DAILY_AWESOME_FOSS_SCOUT_GUIDE);
+  }
+
+  if (isRepoLikeContent({ title, url, category, sourceDomain, formattedText })) {
+    guides.push(GITHUB_REPO_REVIEW_GUIDE);
+  }
+
+  if (isAiResearchContent(title, formattedText)) {
+    guides.push(AI_RESEARCH_EXPLAINER_GUIDE);
+  }
+
+  return guides.join('\n\n');
+}
+
 function buildFallbackTranslation(title = '', text = '', targetLanguage = 'Urdu') {
   const content = String(text || '').trim();
   const cleanedTitle = String(title || 'OpenGuideHub').trim();
@@ -364,9 +422,16 @@ async function analyzeContentMetadata({ title = '', url = '', note = '', formatt
   }
 
   try {
+    const activeGuides = buildActiveGuides({
+      title,
+      url,
+      category: fallbackCategory,
+      sourceDomain,
+      formattedText: sample,
+    });
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: `You are the OpenGuideHub analyzer+categorizor agent. Classify the content into exactly one category from: ${DEFAULT_CONTENT_CATEGORIES.join(', ')}. Return strict JSON with keys: category, excerpt, tags. Keep excerpt under 180 characters and tags as an array of 3 to 6 short phrases.`,
+        systemPrompt: `You are the OpenGuideHub analyzer+categorizor agent. Classify the content into exactly one category from: ${DEFAULT_CONTENT_CATEGORIES.join(', ')}. Return strict JSON with keys: category, excerpt, tags. Keep excerpt under 180 characters and tags as an array of 3 to 6 short phrases.\n\nFollow these editorial and content-recognition guides when choosing tags and excerpt quality:\n\n${activeGuides}`,
         userPrompt: `Title: ${title}\nSource: ${url || sourceDomain || 'N/A'}\n\nContent sample:\n${sample}`,
         temperature: 0.1,
         maxTokens: 220,
@@ -435,8 +500,8 @@ function cleanEditorialLine(value = '') {
     .replace(/\b[a-z0-9.-]+\.(?:com|org|net|io|dev|app|ai|co|me)\b/gi, ' ')
     .replace(/\*\*/g, '')
     .replace(/^[#>*\-\d.\s]+/, '')
-    .replace(/^(tl;dr|summary|what happened|what this ai update says|steps to know|risk to know|project snapshot|key points|why it matters|continue exploring|sources and further reading|free tools and downloads|category|source report|read full original article here|original source|quick take|key idea|why now|main detail|what to watch)\s*:?\s*/i, '')
-    .replace(/\b(tl;dr|rss|type|category|source|source report|original article|read here|read full original article here|read full|read more|original source|continue exploring|quick take|key idea|why now|main detail|what to watch|what this ai update says|steps to know|risk to know|project snapshot)\s*:?/gi, ' ')
+    .replace(/^(tl;dr|summary|what happened|what this ai update says|steps to know|risk to know|project snapshot|software snapshot|research goal|context to understand|key points|key findings|why it matters|why it matters for builders|why it matters for safety|why it matters for the community|how it works|limits and caution|continue exploring|sources and further reading|free tools and downloads|category|source report|read full original article here|original source|quick take|key idea|why now|main detail|what to watch)\s*:?\s*/i, '')
+    .replace(/\b(tl;dr|rss|type|category|source|source report|original article|read here|read full original article here|read full|read more|original source|continue exploring|quick take|key idea|why now|main detail|what to watch|what this ai update says|steps to know|risk to know|project snapshot|software snapshot|research goal|context to understand|key findings|how it works|limits and caution)\s*:?/gi, ' ')
     .replace(/[\[\]()|]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -540,7 +605,7 @@ function sanitizeStructuredMarkdown(content = '', title = '') {
 
 function hasStructuredMarkdown(content = '') {
   return /##\s*TL;DR/i.test(content)
-    && /##\s*(Key points|Why it matters|What happened|What this AI update says|Steps to know|Risk to know|Project snapshot)/i.test(content);
+    && /##\s*(Context to understand|Key points|Key findings|Why it matters|What happened|What this AI update says|Steps to know|Risk to know|Project snapshot|Software snapshot|Research goal)/i.test(content);
 }
 
 function extractMeaningfulContext(items = [], title = '') {
@@ -593,6 +658,13 @@ function buildDownloadLinksMarkdown(category = '', absolute = false) {
 function getCategoryTemplate(category = '') {
   const key = String(category || '').toLowerCase();
 
+  if (/(science|research|arxiv)/.test(key)) {
+    return {
+      summaryHeading: 'Research goal',
+      whyText: 'This helps readers understand the research in plain language without overstating early results.',
+    };
+  }
+
   if (/(artificial intelligence|ai agents|ai tools)/.test(key)) {
     return {
       summaryHeading: 'What this AI update says',
@@ -632,13 +704,13 @@ function extractFocusPhrase(title = '', note = '', category = '') {
     'the', 'and', 'for', 'with', 'this', 'that', 'from', 'into', 'over', 'your', 'about',
     'have', 'has', 'using', 'used', 'guide', 'news', 'update', 'article', 'brief', 'quick',
     'take', 'what', 'why', 'more', 'read', 'full', 'here', 'been', 'than', 'they', 'them',
-    'their', 'main', 'next', 'step', 'just', 'when', 'where', 'build', 'built',
+    'their', 'main', 'next', 'step', 'just', 'when', 'where', 'build', 'built', 'all', 'need',
     'looking', 'collaborators', 'collaboration', 'agnostic',
   ]);
   const genericWords = new Set([
     'useful', 'helpful', 'simple', 'easier', 'easy', 'official', 'example', 'examples',
     'developer', 'developers', 'project', 'projects', 'platform', 'library', 'libraries',
-    'tools', 'source', 'sources', 'download', 'downloads', 'free',
+    'tools', 'source', 'sources', 'download', 'downloads', 'free', 'research', 'paper', 'foundational',
   ]);
   const shortTerms = new Set(['ai', 'ml', 'llm', 'api', 'sdk', 'cli', 'gpu', 'cpu', 'ui', 'ux', 'sql', 'rag']);
   const words = [];
@@ -670,6 +742,17 @@ function extractFocusPhrase(title = '', note = '', category = '') {
         words.push(/[A-Z]/.test(normalized) ? normalized : lowered);
       });
   };
+
+  if (/(science|research|arxiv)/i.test(String(category || ''))) {
+    const researchTerms = (String(note || title || '').match(/[a-z0-9][a-z0-9+.#-]*/gi) || [])
+      .map((token) => token.toLowerCase())
+      .filter((token) => !stopwords.has(token) && !genericWords.has(token))
+      .filter((token) => ['transformer', 'diffusion', 'reasoning', 'inference', 'attention', 'benchmark', 'alignment'].includes(token));
+
+    if (researchTerms.length) {
+      return researchTerms.slice(0, 2).join(' ');
+    }
+  }
 
   [title, note, category].forEach((source) => {
     if (words.length < 3) {
@@ -708,7 +791,8 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
   const normalizedTitle = cleanEditorialLine(title).toLowerCase();
   const titleLead = normalizedTitle.split(/\s+/).slice(0, 6).join(' ');
   const tutorialMode = isTutorialCategory(category, title, note);
-  const template = getCategoryTemplate(tutorialMode ? 'Tutorials' : category);
+  const scienceMode = /(science|research|arxiv)/i.test(String(category || ''));
+  const template = getCategoryTemplate(tutorialMode ? 'Tutorials' : (scienceMode ? 'Science' : category));
   const focusPhrase = extractFocusPhrase(title, note, category);
   const sentences = extractMeaningfulContext([
     ...toSentenceList(formattedText),
@@ -741,6 +825,10 @@ function buildStructuredFallbackContent({ title = '', url = '', note = '', forma
     return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overviewLead}\n\n${overviewDetail}\n\n## مرحلہ وار رہنمائی\n1. پہلے موضوع یا ٹول کا مقصد سمجھیں۔\n2. پھر بنیادی مراحل ایک ایک کر کے فالو کریں اور اہم پوائنٹس نوٹ کریں۔\n3. آخر میں متعلقہ ڈاؤن لوڈ سیکشن اور اصل سورس سے اگلا قدم لیں۔\n\n## اہم نکات\n${bullets || '- **خلاصہ:** یہ ٹیوٹوریل اب زیادہ واضح انداز میں پیش کیا گیا ہے۔'}\n\n## یہ کیوں اہم ہے\n${template.whyText}\n\n## ڈاؤن لوڈ سیکشن\n${buildDownloadLinksMarkdown(category)}\n\n## ماخذ اور مزید مطالعہ\n${sourceLinks}`.trim();
   }
 
+  if (scienceMode) {
+    return `## TL;DR\n**Quick take:** ${tldr}\n\n## ${template.summaryHeading}\n${overviewLead}\n\n${overviewDetail}\n\n## Context to understand\nThis gives readers a clearer explanation of ${focusPhrase || cleanEditorialLine(title) || 'the research topic'}, including the problem being explored and the practical idea behind the work.\n\n## Key findings\n${bullets || '- **Summary:** This research brief keeps the main takeaway readable for non-specialist readers.'}\n\n## Why it matters\n${template.whyText}\n\n## Limits and caution\nResearch summaries should be read with care, especially when the source is an early paper or preprint.\n\n## Sources and further reading\n${sourceLinks}`.trim();
+  }
+
   const downloadSection = needsDownloadSection(category)
     ? `\n\n## Download section\n${buildDownloadLinksMarkdown(category)}`
     : '';
@@ -753,6 +841,7 @@ async function buildPublishedArticleContent({ title = '', url = '', note = '', f
   const sourceLine = sourceUrl ? `Original source: ${sourceUrl}` : 'No external backlink available.';
   const internalLink = `${serviceState.publicSiteUrl}/articles?category=${slugify(category || 'technology')}`;
   const rawFormattedText = String(formattedText || '');
+  const activeGuides = buildActiveGuides({ title, url: sourceUrl, category, sourceDomain, formattedText: rawFormattedText });
   const sanitizedFormattedText = sanitizeStructuredMarkdown(rawFormattedText, title);
   const baseText = extractMeaningfulContext([
     ...rawFormattedText.split(/\n+/),
@@ -774,8 +863,8 @@ async function buildPublishedArticleContent({ title = '', url = '', note = '', f
   try {
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: `You are the OpenGuideHub editorial formatter agent. Follow this exact house style:\n\n${EDITORIAL_STYLE_GUIDE}\n\nUse the matching category and language template from this guide:\n\n${CONTENT_BOILERPLATES_GUIDE}`,
-        userPrompt: `Create a polished article from this source material.\n\nTitle: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\nExternal source line: ${sourceLine}\n\nRules:\n- choose the best category boilerplate\n- output only Markdown\n- use clear paragraph spacing under each heading\n- make the writing detailed, human-readable, and easy to understand\n- do not repeat the title or the same sentence across sections\n- keep hyperlinks wrapped in readable anchor text and never leave naked URLs in the body\n- never place direct software download URLs inside the article body; use an internal Download section linking to /downloads?category=<category-slug> instead\n- for Tutorials or Programming posts, write the main body in simple Urdu while keeping technical terms in English when needed\n- use clear tutorial sections when the post is a how-to guide\n- use 2 to 4 ==highlighted phrases== for the most important terms\n- strengthen SEO naturally with heading language, source-aware anchor text, and keyword variations from the title\n- bold important words and ideas\n\nSource material:\n${rewriteSource}`,
+        systemPrompt: `You are the OpenGuideHub editorial formatter agent. Follow this exact publishing stack of guides:\n\n${activeGuides}`,
+        userPrompt: `Create a polished article from this source material.\n\nTitle: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\nExternal source line: ${sourceLine}\n\nRules:\n- choose the best category boilerplate\n- output only Markdown\n- use clear paragraph spacing under each heading\n- make the writing detailed, human-readable, and easy to understand\n- do not repeat the title or the same sentence across sections\n- keep hyperlinks wrapped in readable anchor text and never leave naked URLs in the body\n- never place direct software download URLs inside the article body; use an internal Download section linking to /downloads?category=<category-slug> instead\n- for Tutorials or Programming posts, write the main body in simple Urdu while keeping technical terms in English when needed\n- if the source is a repository or release page, explain what the project does, who it helps, and any install or release cues only when the source supports them\n- if the source is research or arXiv-like, explain the problem in plain language and note when it should be treated as early or preprint work\n- use clear tutorial sections when the post is a how-to guide\n- use 2 to 4 ==highlighted phrases== for the most important terms\n- strengthen SEO naturally with heading language, source-aware anchor text, and keyword variations from the title\n- bold important words and ideas\n\nSource material:\n${rewriteSource}`,
         temperature: 0.3,
         maxTokens: 900,
         model: serviceState.ollamaRewriterModel,
@@ -1253,9 +1342,14 @@ app.post('/api/ai/translate', async (req, res) => {
   }
 
   try {
+    const translationGuides = [
+      PUBLISHING_STANDARD_GUIDE,
+      MULTILINGUAL_READER_GUIDE,
+      ARTICLE_QUALITY_VALIDATOR_GUIDE,
+    ].join('\n\n');
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: `You are a precise multilingual translator for OpenGuideHub. Follow this guide:\n\n${MULTILINGUAL_READER_GUIDE}\n\nTranslate the provided website or article text into ${targetLanguage} using natural, reader-friendly language. Preserve headings, bullets, links, and structure. When translating into Urdu or Arabic, use fluent right-to-left friendly phrasing. Do not add commentary or extra notes.`,
+        systemPrompt: `You are a precise multilingual translator for OpenGuideHub. Follow these guides:\n\n${translationGuides}\n\nTranslate the provided website or article text into ${targetLanguage} using natural, reader-friendly language. Preserve headings, bullets, links, and structure. When translating into Urdu or Arabic, use fluent right-to-left friendly phrasing. Do not add commentary or extra notes.`,
         userPrompt: `Title: ${title}\n\nContent:\n${normalizedText}`,
         temperature: 0.2,
         maxTokens: 2200,
@@ -1312,9 +1406,12 @@ app.post('/api/ai/explain', async (req, res) => {
 
   try {
     const researchMode = isAiResearchContent(title, normalizedContent);
+    const repoMode = isRepoLikeContent({ title, formattedText: normalizedContent });
     const systemPrompt = researchMode
-      ? `You are the OpenGuideHub AI research explainer. Answer in ${language}. Follow this guide exactly:\n\n${AI_RESEARCH_EXPLAINER_GUIDE}`
-      : `You are the OpenGuideHub reading assistant. Answer clearly in ${language}. Use only the provided article context, explain difficult ideas simply, and avoid making up facts. Prefer a short TL;DR first, then 3 key takeaways.`;
+      ? `You are the OpenGuideHub AI research explainer. Answer in ${language}. Follow these guides exactly:\n\n${PUBLISHING_STANDARD_GUIDE}\n\n${AI_RESEARCH_EXPLAINER_GUIDE}\n\n${ARTICLE_QUALITY_VALIDATOR_GUIDE}`
+      : repoMode
+        ? `You are the OpenGuideHub repository explainer. Answer in ${language}. Use only the provided article context. Explain what the project is, what problem it solves, how the workflow works, who it helps, and why it matters. Follow these guides:\n\n${PUBLISHING_STANDARD_GUIDE}\n\n${GITHUB_REPO_REVIEW_GUIDE}\n\n${ARTICLE_QUALITY_VALIDATOR_GUIDE}`
+        : `You are the OpenGuideHub reading assistant. Answer clearly in ${language}. Use only the provided article context, explain difficult ideas simply, and avoid making up facts. Prefer a short TL;DR first, then 3 key takeaways. Follow these guides:\n\n${PUBLISHING_STANDARD_GUIDE}\n\n${ARTICLE_QUALITY_VALIDATOR_GUIDE}`;
 
     const readerPrompt = researchMode
       ? (question || 'Explain this AI or arXiv article in simple language: what problem it solves, how it works, the key result, and why it matters.')
