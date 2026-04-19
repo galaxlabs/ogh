@@ -16,7 +16,7 @@ function getCandidateBases() {
     if (/localhost|127\.0\.0\.1/.test(hostname)) {
       bases.push(normalizeBase(origin), 'http://127.0.0.1:3100', '');
     } else {
-      bases.push('https://api.openguidehub.org', normalizeBase(origin));
+      bases.push(normalizeBase(origin), 'https://api.openguidehub.org');
     }
   }
 
