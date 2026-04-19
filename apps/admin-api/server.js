@@ -14,9 +14,20 @@ const port = Number(process.env.ADMIN_API_PORT || 3100);
 const logDir = path.join(__dirname, 'runtime');
 const logFile = path.join(logDir, 'admin-service.log');
 const backupDir = path.join(logDir, 'backups');
+const editorialStyleFile = path.join(__dirname, 'editorial-style-guide.md');
 
 fs.mkdirSync(logDir, { recursive: true });
 fs.mkdirSync(backupDir, { recursive: true });
+
+function loadEditorialStyleGuide() {
+  try {
+    return fs.readFileSync(editorialStyleFile, 'utf8').trim();
+  } catch {
+    return 'Use Markdown sections named TL;DR, What happened, Key points, Why it matters, and Sources and further reading. Keep paragraphs short, avoid repeated labels, and include one internal link plus one source backlink when relevant.';
+  }
+}
+
+const EDITORIAL_STYLE_GUIDE = loadEditorialStyleGuide();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -269,7 +280,7 @@ async function analyzeContentMetadata({ title = '', url = '', note = '', formatt
   try {
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: `You are the OpenGuideHub analyzer+categorizor agent. Classify the content into exactly one category from: ${DEFAULT_CONTENT_CATEGORIES.join(', ')}. Return strict JSON with keys: category, excerpt, tags. Keep excerpt under 180 characters and make tags an array of 3 to 6 short phrases that act like subcategories or topic labels.`,
+        systemPrompt: `You are the OpenGuideHub analyzer+categorizor agent. Classify the content into exactly one category from: ${DEFAULT_CONTENT_CATEGORIES.join(', ')}. Return strict JSON with keys: category, excerpt, tags. Keep excerpt under 180 characters and tags as an array of 3 to 6 short phrases.`,
         userPrompt: `Title: ${title}\nSource: ${url || sourceDomain || 'N/A'}\n\nContent sample:\n${sample}`,
         temperature: 0.1,
         maxTokens: 220,
@@ -302,22 +313,71 @@ function pickEditorialAuthor(seed = '') {
   return EDITORIAL_AUTHOR_POOL[parseInt(hash.slice(0, 8), 16) % EDITORIAL_AUTHOR_POOL.length];
 }
 
-function buildStructuredFallbackContent({ title = '', url = '', note = '', formattedText = '', category = 'Article', sourceDomain = '' }) {
-  const baseText = String(formattedText || note || title).replace(/\s+/g, ' ').trim();
-  const sentences = baseText.split(/(?<=[.!?])\s+/).filter(Boolean);
-  const tldr = sentences.slice(0, 2).join(' ').slice(0, 360) || title;
-  const bullets = sentences.slice(0, 4).map((line) => `- ${line.slice(0, 180)}`).join('\n');
-  const sourceLabel = sourceDomain || (url ? new URL(url).hostname.replace(/^www\./, '') : 'reference source');
-  const internalLink = `https://openguidehub.org/articles?category=${slugify(category || 'technology')}`;
-  const sourceLine = url ? `Read full original article here: ${url}` : 'Source reference will be added when available.';
+function normalizePublicUrl(value = '') {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw.replace(/^\/+/, '')}`;
+}
 
-  return `## TL;DR\n${tldr}\n\n## Summary\n${bullets || '- This article has been archived and summarized for easier reading.'}\n\n## Why it matters\nThis post was reorganized into a cleaner editorial format by OpenGuideHub for faster reading and easier reference.\n\n## Continue exploring\n- More ${category || 'technology'} posts on OpenGuideHub: ${internalLink}\n- Source report: ${sourceLabel}\n- ${sourceLine}`.trim();
+function cleanEditorialLine(value = '') {
+  return String(value || '')
+    .replace(/^[#>*\-\d.\s]+/, '')
+    .replace(/^(tl;dr|summary|what happened|key points|why it matters|continue exploring|sources and further reading|category|source report|read full original article here)\s*:?\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function uniqueLines(items = []) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const clean = cleanEditorialLine(item).toLowerCase();
+    if (!clean || seen.has(clean)) {
+      return false;
+    }
+    seen.add(clean);
+    return true;
+  });
+}
+
+function toSentenceList(value = '') {
+  return String(value || '')
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((item) => cleanEditorialLine(item))
+    .filter(Boolean);
+}
+
+function buildStructuredFallbackContent({ title = '', url = '', note = '', formattedText = '', category = 'Article', sourceDomain = '' }) {
+  const sourceUrl = normalizePublicUrl(url);
+  const sourceLabel = sourceDomain || (sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : 'original source');
+  const internalLink = `${serviceState.publicSiteUrl}/articles?category=${slugify(category || 'technology')}`;
+  const sentences = uniqueLines([
+    ...toSentenceList(formattedText),
+    ...toSentenceList(note),
+    cleanEditorialLine(title),
+  ]).filter((item) => item.length > 24);
+
+  const tldr = sentences[0]?.slice(0, 260) || cleanEditorialLine(title) || 'A concise brief is being prepared for this article.';
+  const overview = sentences.slice(1, 3).join(' ') || 'This article has been reorganized into a cleaner editorial brief for easier reading.';
+  const bullets = sentences.slice(0, 4).map((line) => `- ${line.slice(0, 180)}`).join('\n');
+  const sourceLinks = [
+    `- [More ${category || 'technology'} articles on OpenGuideHub](${internalLink})`,
+    sourceUrl ? `- [Original source from ${sourceLabel}](${sourceUrl})` : `- Source report: ${sourceLabel}`,
+  ].filter(Boolean).join('\n');
+
+  return `## TL;DR\n${tldr}\n\n## What happened\n${overview}\n\n## Key points\n${bullets || '- The article is now available in a shorter, easier-to-read format.'}\n\n## Why it matters\nThis topic matters because it helps readers understand the key development quickly without losing the original context.\n\n## Sources and further reading\n${sourceLinks}`.trim();
 }
 
 async function buildPublishedArticleContent({ title = '', url = '', note = '', formattedText = '', category = 'ARTICLE', sourceDomain = '' }) {
-  const sourceLine = url ? `Read full original article here: ${url}` : '';
-  const baseText = String(formattedText || [title, note].filter(Boolean).join('\n\n')).trim();
-  const fallback = buildStructuredFallbackContent({ title, url, note, formattedText: baseText, category, sourceDomain });
+  const sourceUrl = normalizePublicUrl(url);
+  const sourceLine = sourceUrl ? `Original source: ${sourceUrl}` : 'No external backlink available.';
+  const internalLink = `${serviceState.publicSiteUrl}/articles?category=${slugify(category || 'technology')}`;
+  const baseText = uniqueLines([
+    ...String(formattedText || '').split(/\n+/),
+    ...String(note || '').split(/\n+/),
+  ]).join('\n').trim();
+  const fallback = buildStructuredFallbackContent({ title, url: sourceUrl, note, formattedText: baseText, category, sourceDomain });
 
   if (!serviceState.aiRewriteOnPublish || !baseText) {
     return fallback;
@@ -328,20 +388,19 @@ async function buildPublishedArticleContent({ title = '', url = '', note = '', f
   }
 
   try {
-    const internalLink = `https://openguidehub.org/articles?category=${slugify(category || 'technology')}`;
-
     const result = await Promise.race([
       generateAiText({
-        systemPrompt: 'You are the OpenGuideHub editorial rewrite agent. Rewrite source material into an original, professional magazine-style knowledge post. Use clean Markdown with sections titled TL;DR, Summary, Why it matters, and Continue exploring. Keep paragraphs short, use bullet points where useful, keep facts intact, avoid plagiarism, do not fabricate details, include one internal OpenGuideHub reading link when relevant, and keep the exact external source attribution line at the end when a URL is provided.',
-        userPrompt: `Title: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\n\nSource material:\n${baseText}\n\nRequired ending line: ${sourceLine || 'No backlink line needed.'}`,
-        temperature: 0.35,
+        systemPrompt: `You are the OpenGuideHub editorial formatter agent. Follow this exact house style:\n\n${EDITORIAL_STYLE_GUIDE}`,
+        userPrompt: `Create a polished article from this source material.\n\nTitle: ${title}\nCategory: ${category}\nSource domain: ${sourceDomain || 'N/A'}\nInternal reading link: ${internalLink}\nExternal source line: ${sourceLine}\n\nSource material:\n${baseText}`,
+        temperature: 0.3,
         maxTokens: 900,
         model: serviceState.ollamaRewriterModel,
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('AI rewrite timeout')), 9000)),
     ]);
 
-    return String(result.content || fallback).trim();
+    const rewritten = String(result.content || '').trim();
+    return rewritten.includes('## TL;DR') ? rewritten : fallback;
   } catch (error) {
     log('warn', 'AI rewrite on publish failed, using fallback content', { error: error.message, title });
     return fallback;
@@ -522,7 +581,7 @@ app.get('/api/public/posts', async (req, res) => {
   const posts = await prisma.post.findMany({
     where: { status: 'published' },
     orderBy: { updatedAt: 'desc' },
-    take: 120,
+    take: 36,
     select: {
       id: true,
       slug: true,
@@ -667,8 +726,7 @@ app.post('/api/openclaw/publish', requireOpenClawToken, async (req, res) => {
     } = req.body || {};
 
     const normalizedTitle = String(title || source_domain || 'Imported post').trim();
-    const rawUrl = String(url || '').trim();
-    const normalizedUrl = rawUrl && !/^https?:\/\//i.test(rawUrl) ? `https://${rawUrl.replace(/^\/+/, '')}` : rawUrl;
+    const normalizedUrl = String(url || '').trim();
     const metadata = await analyzeContentMetadata({
       title: normalizedTitle,
       url: normalizedUrl,

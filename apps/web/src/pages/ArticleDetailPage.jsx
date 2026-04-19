@@ -60,52 +60,100 @@ function renderInlineContent(text = '') {
 }
 
 function renderArticleBody(content = '') {
-  const blocks = String(content || '')
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean);
+  const lines = String(content || '').split('\n');
+  const elements = [];
+  let paragraphLines = [];
+  let listType = null;
+  let listItems = [];
 
-  return blocks.map((block, index) => {
-    const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
-
-    if (block.startsWith('# ')) {
-      return <h1 key={index} className="text-4xl font-bold mt-12 mb-4">{renderInlineContent(block.replace('# ', ''))}</h1>;
-    }
-
-    if (block.startsWith('## ')) {
-      return <h2 key={index} className="text-3xl font-bold mt-12 mb-4">{renderInlineContent(block.replace('## ', ''))}</h2>;
-    }
-
-    if (block.startsWith('### ')) {
-      return <h3 key={index} className="text-2xl font-semibold mt-8 mb-3">{renderInlineContent(block.replace('### ', ''))}</h3>;
-    }
-
-    if (block.startsWith('#### ')) {
-      return <h4 key={index} className="text-xl font-semibold mt-6 mb-2">{renderInlineContent(block.replace('#### ', ''))}</h4>;
-    }
-
-    if (lines.every((line) => /^[-*]\s+/.test(line))) {
-      return (
-        <ul key={index} className="mb-5 ml-6 list-disc space-y-2">
-          {lines.map((line, lineIndex) => (
-            <li key={`${index}-${lineIndex}`}>{renderInlineContent(line.replace(/^[-*]\s+/, ''))}</li>
-          ))}
-        </ul>
+  const flushParagraph = () => {
+    if (!paragraphLines.length) return;
+    const text = paragraphLines.join(' ').trim();
+    if (text) {
+      elements.push(
+        <p key={`p-${elements.length}`} className="mb-4 leading-8 text-foreground/90">
+          {renderInlineContent(text)}
+        </p>
       );
     }
+    paragraphLines = [];
+  };
 
-    if (lines.every((line) => /^\d+\.\s+/.test(line))) {
-      return (
-        <ol key={index} className="mb-5 ml-6 list-decimal space-y-2">
-          {lines.map((line, lineIndex) => (
-            <li key={`${index}-${lineIndex}`}>{renderInlineContent(line.replace(/^\d+\.\s+/, ''))}</li>
-          ))}
-        </ol>
-      );
+  const flushList = () => {
+    if (!listItems.length) return;
+    const Tag = listType === 'ol' ? 'ol' : 'ul';
+    const className = listType === 'ol'
+      ? 'mb-5 ml-6 list-decimal space-y-2'
+      : 'mb-5 ml-6 list-disc space-y-2';
+
+    elements.push(
+      <Tag key={`list-${elements.length}`} className={className}>
+        {listItems.map((item, index) => (
+          <li key={`item-${index}`}>{renderInlineContent(item)}</li>
+        ))}
+      </Tag>
+    );
+
+    listItems = [];
+    listType = null;
+  };
+
+  lines.forEach((rawLine) => {
+    const line = rawLine.trim();
+
+    if (!line) {
+      flushParagraph();
+      flushList();
+      return;
     }
 
-    return <p key={index} className="mb-4 leading-8 text-foreground/90">{renderInlineContent(block)}</p>;
+    const headingMatch = line.match(/^(#{2,4})\s+(.*)$/);
+    if (headingMatch) {
+      flushParagraph();
+      flushList();
+      const level = headingMatch[1].length;
+      const text = headingMatch[2].trim();
+      const headingClass = level === 2
+        ? 'text-3xl font-bold mt-12 mb-4'
+        : level === 3
+          ? 'text-2xl font-semibold mt-8 mb-3'
+          : 'text-xl font-semibold mt-6 mb-2';
+      const HeadingTag = level === 2 ? 'h2' : level === 3 ? 'h3' : 'h4';
+      elements.push(<HeadingTag key={`h-${elements.length}`} className={headingClass}>{renderInlineContent(text)}</HeadingTag>);
+      return;
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      flushParagraph();
+      if (listType && listType !== 'ul') {
+        flushList();
+      }
+      listType = 'ul';
+      listItems.push(line.replace(/^[-*]\s+/, '').trim());
+      return;
+    }
+
+    if (/^\d+\.\s+/.test(line)) {
+      flushParagraph();
+      if (listType && listType !== 'ol') {
+        flushList();
+      }
+      listType = 'ol';
+      listItems.push(line.replace(/^\d+\.\s+/, '').trim());
+      return;
+    }
+
+    if (listItems.length) {
+      flushList();
+    }
+
+    paragraphLines.push(line);
   });
+
+  flushParagraph();
+  flushList();
+
+  return elements;
 }
 
 function ArticleDetailPage() {

@@ -12,14 +12,13 @@ import Sidebar from '@/components/Sidebar.jsx';
 import { articles, categories } from '@/data/articles.js';
 import { getTranslation } from '@/data/i18n.js';
 import { fetchPublicPosts, mergeArticles } from '@/lib/publicContentService.js';
-import { buildCategoryStats, buildSubcategoryStats, slugifyCategory } from '@/lib/categoryUtils.js';
+import { buildCategoryStats, slugifyCategory } from '@/lib/categoryUtils.js';
 
 function ArticlesPage() {
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'all');
-  const [selectedTag, setSelectedTag] = useState(searchParams.get('tag') || 'all');
   const [allArticles, setAllArticles] = useState(articles);
   const translations = getTranslation(currentLanguage);
 
@@ -40,7 +39,6 @@ function ArticlesPage() {
   useEffect(() => {
     setSearchQuery(searchParams.get('q') || '');
     setSelectedCategory(searchParams.get('category') || 'all');
-    setSelectedTag(searchParams.get('tag') || 'all');
   }, [searchParams]);
 
   const handleSearchChange = (value) => {
@@ -66,25 +64,12 @@ function ArticlesPage() {
   };
 
   const categoryStats = buildCategoryStats(categories, allArticles);
-  const subcategoryStats = buildSubcategoryStats(allArticles, 20);
-
-  const handleTagChange = (value) => {
-    setSelectedTag(value);
-    const next = new URLSearchParams(searchParams);
-    if (value && value !== 'all') {
-      next.set('tag', value);
-    } else {
-      next.delete('tag');
-    }
-    setSearchParams(next, { replace: true });
-  };
 
   const filteredArticles = allArticles.filter(article => {
-    const haystack = `${article.title} ${article.excerpt} ${(article.tags || []).join(' ')}`.toLowerCase();
-    const matchesSearch = haystack.includes(searchQuery.toLowerCase());
+    const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || slugifyCategory(article.category) === selectedCategory;
-    const matchesTag = selectedTag === 'all' || (article.tags || []).some((tag) => slugifyCategory(tag) === selectedTag);
-    return matchesSearch && matchesCategory && matchesTag;
+    return matchesSearch && matchesCategory;
   });
 
   const sortedArticles = [...filteredArticles].sort((a, b) => 
@@ -141,29 +126,10 @@ function ArticlesPage() {
                     placeholder={translations.common.search}
                   />
                   <CategoryFilter
-                    categories={categoryStats.slice(0, 24)}
+                    categories={categoryStats.slice(0, 12)}
                     selectedCategory={selectedCategory}
                     onCategoryChange={handleCategoryChange}
                   />
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleTagChange('all')}
-                      className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${selectedTag === 'all' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
-                    >
-                      All subtopics
-                    </button>
-                    {subcategoryStats.map((tag) => (
-                      <button
-                        key={tag.slug}
-                        type="button"
-                        onClick={() => handleTagChange(tag.slug)}
-                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${selectedTag === tag.slug ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
-                      >
-                        {tag.name} ({tag.count})
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 {sortedArticles.length === 0 ? (
@@ -175,7 +141,7 @@ function ArticlesPage() {
                     <div className="text-sm text-muted-foreground">
                       Showing {sortedArticles.length} {sortedArticles.length === 1 ? 'article' : 'articles'}
                     </div>
-                    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div className="grid gap-8">
                       {sortedArticles.map((article, index) => (
                         <ArticleCard key={article.id} article={article} index={index} />
                       ))}

@@ -39,8 +39,8 @@ function Sidebar({ popularPosts = [], categories = [] }) {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {categories.slice(0, 12).map((category) => (
-              <Link key={category.slug} to={`/articles?category=${encodeURIComponent(category.slug || category.name)}`}>
+            {categories.slice(0, 10).map((category) => (
+              <Link key={category.slug} to={`/categories#${category.slug}`}>
                 <Badge variant="secondary" className="hover:bg-primary hover:text-primary-foreground transition-colors">
                   {category.name}{category.count > 0 ? ` (${category.count})` : ''}
                 </Badge>

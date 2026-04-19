@@ -42,11 +42,11 @@ function HomePage() {
   };
 
   const featuredArticles = allArticles.filter(a => a.featured);
-  const latestArticles = allArticles.slice(0, 9);
-  const trendingArticles = allArticles.slice(0, 6);
-  const tutorialArticles = allArticles.filter(a => a.category.includes('Tutorial') || a.category === 'Programming').slice(0, 4);
-  const reviewArticles = allArticles.filter(a => a.category.includes('Review')).slice(0, 4);
-  const scienceArticles = allArticles.filter(a => ['Physics', 'Chemistry', 'Biology'].includes(a.category)).slice(0, 4);
+  const latestArticles = allArticles.slice(0, 4);
+  const trendingArticles = allArticles.slice(0, 4);
+  const tutorialArticles = allArticles.filter(a => a.category.includes('Tutorial') || a.category === 'Programming').slice(0, 2);
+  const reviewArticles = allArticles.filter(a => a.category.includes('Review')).slice(0, 2);
+  const scienceArticles = allArticles.filter(a => ['Physics', 'Chemistry', 'Biology'].includes(a.category)).slice(0, 2);
   const categoryStats = buildCategoryStats(categories, allArticles);
   const discoveryLanes = [
     { label: 'All', value: 'all' },
@@ -63,7 +63,7 @@ function HomePage() {
       const matchesQuery = !discoverQuery.trim() || haystack.includes(discoverQuery.trim().toLowerCase());
       return matchesLane && matchesQuery;
     })
-    .slice(0, 8);
+    .slice(0, 4);
   const spotlightRows = [
     {
       title: 'For AI builders',
@@ -229,7 +229,7 @@ function HomePage() {
                   <div key={row.title} className="rounded-2xl border bg-background p-5">
                     <h3 className="text-lg font-semibold mb-4">{row.title}</h3>
                     <div className="space-y-4">
-                      {row.items.slice(0, 5).map((article) => (
+                      {row.items.map((article) => (
                         <Link key={article.id} to={`/articles/${article.slug}`} className="block group">
                           <div className="text-sm font-medium group-hover:text-primary transition-colors line-clamp-2">{article.title}</div>
                           <div className="text-xs text-muted-foreground mt-1">{article.category} • {article.readingTime} min read</div>
