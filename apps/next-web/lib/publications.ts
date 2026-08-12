@@ -137,3 +137,89 @@ export function filterArticlesForPublication(
   if (!pub || pub.categories.length === 0) return all;
   return all.filter((a) => pub.categories.includes(a.category));
 }
+
+// ---- PBN internal-linking network ----
+//
+// Each category links to related categories across publications. Niche
+// categories stay isolated to their own publication; news flows everywhere.
+// This builds the inter-publication link network for SEO authority transfer.
+
+export interface CategoryLink {
+  name: string;
+  publication: string; // publication key (subdomain)
+  url: string; // /articles?category=...
+}
+
+// Category -> which publication subdomain owns it (primary home).
+const CATEGORY_HOME: Record<string, string> = {
+  Physics: "science",
+  Chemistry: "science",
+  Biology: "science",
+  "Artificial Intelligence": "ai",
+  "AI Tools": "ai",
+  "Machine Learning": "ai",
+  Programming: "tech",
+  "Cloud & DevOps": "tech",
+  Cybersecurity: "tech",
+  "Repo Reviews": "news",
+  "Open Source": "news",
+  "FOSS Updates": "news",
+  Tutorials: "knowledge",
+  Guides: "knowledge",
+  Reviews: "news",
+  News: "news",
+};
+
+// Categories that appear on EVERY publication (news is global per spec).
+const GLOBAL_CATEGORIES = ["News", "Open Source", "Repo Reviews"];
+
+// Per-category related categories for cross-linking.
+const CATEGORY_RELATED: Record<string, string[]> = {
+  Physics: ["Chemistry", "Tutorials", "Artificial Intelligence"],
+  Chemistry: ["Physics", "Tutorials", "Cloud & DevOps"],
+  "Artificial Intelligence": ["Machine Learning", "Tutorials", "Programming"],
+  Programming: ["Tutorials", "Cloud & DevOps", "Artificial Intelligence"],
+  "Cloud & DevOps": ["Programming", "Cybersecurity", "Tutorials"],
+  "Open Source": ["Repo Reviews", "Programming", "FOSS Updates"],
+  Tutorials: ["Guides", "Programming", "Physics"],
+  Guides: ["Tutorials", "Open Source"],
+  "Repo Reviews": ["Open Source", "FOSS Updates", "Programming"],
+};
+
+// Get the categories a publication should show: its own niche categories
+// plus the global (news) categories that appear everywhere.
+export function publicationCategories(pub: Publication | null): string[] {
+  if (!pub) return [];
+  const owned = pub.categories;
+  const globalOnes = GLOBAL_CATEGORIES.filter((c) => !owned.includes(c));
+  return [...owned, ...globalOnes];
+}
+
+// Build the category link network for a publication's article page.
+export function categoryLinkNetwork(pub: Publication | null): CategoryLink[] {
+  if (!pub) return [];
+  const visible = publicationCategories(pub);
+  const links: CategoryLink[] = [];
+  for (const cat of visible) {
+    const homePub = CATEGORY_HOME[cat] || pub.key;
+    links.push({
+      name: cat,
+      publication: homePub,
+      url: homePub === pub.key ? `/articles?category=${encodeURIComponent(cat.toLowerCase().replace(/\s+/g, "-"))}` : `https://${homePub}.openguidehub.org/articles?category=${encodeURIComponent(cat.toLowerCase().replace(/\s+/g, "-"))}`,
+    });
+  }
+  return links;
+}
+
+// Related categories for the article detail "related" block.
+export function relatedCategoriesFor(category: string): CategoryLink[] {
+  const related = CATEGORY_RELATED[category] || [];
+  return related.map((name) => {
+    const homePub = CATEGORY_HOME[name] || "knowledge";
+    return {
+      name,
+      publication: homePub,
+      url: `https://${homePub}.openguidehub.org/articles?category=${encodeURIComponent(name.toLowerCase().replace(/\s+/g, "-"))}`,
+    };
+  });
+}

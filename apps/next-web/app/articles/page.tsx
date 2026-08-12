@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { SiteShell } from "@/components/site-shell";
 import { ArticlesExplorer } from "@/components/articles-explorer";
 import { Breadcrumb } from "@/components/breadcrumb";
+import { CategoryLinkNetwork } from "@/components/category-link-network";
 import { categories, buildCategoryStats } from "@/lib/data";
 import { getPublicationBySubdomain, filterArticlesForPublication } from "@/lib/publications";
 
@@ -49,6 +50,8 @@ export default async function ArticlesPage() {
         >
           <ArticlesExplorer articles={scopedArticles} categoryStats={categoryStats} />
         </Suspense>
+
+        {publication && <CategoryLinkNetwork />}
       </div>
     </SiteShell>
   );
