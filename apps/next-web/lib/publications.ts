@@ -1,5 +1,6 @@
 import type { Article } from "@/lib/data";
 import { articles } from "@/lib/data";
+import type { PublicationConfig } from "@/lib/galaxy-ops-api";
 
 export type PublicationKey =
   | "news"
@@ -112,6 +113,21 @@ export function getPublicationBySubdomain(sub: string | null | undefined): Publi
   if (!sub) return null;
   const key = sub.toLowerCase().replace(/\.openguidehub\.org$/, "") as PublicationKey;
   return PUBLICATIONS[key] || null;
+}
+
+// Merge a dynamic API publication config (hero/tagline/languages from Frappe)
+// with the static fallback, so a subdomain shows backend-configured branding.
+export function mergePublicationConfig(
+  pub: Publication,
+  config: PublicationConfig | null
+): Publication {
+  if (!config) return pub;
+  return {
+    ...pub,
+    name: config.site_title || config.name || pub.name,
+    tagline: config.site_tagline || pub.tagline,
+    defaultLanguage: config.default_language || pub.defaultLanguage,
+  };
 }
 
 export function filterArticlesForPublication(

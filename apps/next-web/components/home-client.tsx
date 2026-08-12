@@ -49,10 +49,14 @@ export function HomeClient({
   articles,
   categoryStats,
   publication = null,
+  heroImage,
+  heroImageAlt,
 }: {
   articles: Article[];
   categoryStats: CategoryStats[];
   publication?: { name: string; tagline: string } | null;
+  heroImage?: string;
+  heroImageAlt?: string;
 }) {
   const { translations } = useLanguage();
   const home = translations?.home || {};
@@ -113,8 +117,11 @@ export function HomeClient({
       <section className="relative flex min-h-[90vh] items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="https://images.unsplash.com/photo-1699100329878-7f28bb780787"
-            alt="Hero background"
+            src={
+              heroImage ||
+              "https://images.unsplash.com/photo-1699100329878-7f28bb780787"
+            }
+            alt={heroImageAlt || "Hero background"}
             fill
             priority
             sizes="100vw"
