@@ -1,0 +1,32 @@
+# Cloudflare Workers config for OpenGuideHub universal frontend (next-web)
+name = "openguidehub-frontend"
+main = ".open-next/worker.js"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# Assets (public/ + static files) served by the Worker
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+not_found_handling = "none"
+
+# Bindings
+[vars]
+NEXT_PUBLIC_SITE_URL = "https://openguidehub.org"
+NEXT_PUBLIC_ADMIN_API_URL = "https://api.openguidehub.org"
+
+# Routes — wildcard catches all publication subdomains; apex for the root
+[[routes]]
+pattern = "openguidehub.org/*"
+zone_name = "openguidehub.org"
+
+[[routes]]
+pattern = "*.openguidehub.org/*"
+zone_name = "openguidehub.org"
+
+# Workers preview URL (temporary, until DNS is set)
+# preview_urls_enabled = true
+
+[observability]
+enabled = true
