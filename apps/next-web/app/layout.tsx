@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider } from "@/components/language-provider";
 import { FontProvider } from "@/components/font-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { FONT_VARIABLES } from "@/lib/fonts";
+import { getPublicationBySubdomain } from "@/lib/publications";
+import { PublicationProvider } from "@/components/publication-provider";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://openguidehub.org"),
@@ -56,10 +59,14 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Publication subdomain from middleware header (server-side read).
+  const headerStore = await headers();
+  const publication = getPublicationBySubdomain(headerStore.get("x-ogh-publication"));
+
   return (
     <html
-      lang="en"
+      lang={publication?.defaultLanguage || "en"}
       suppressHydrationWarning
       className={`${FONT_VARIABLES} h-full antialiased`}
     >
@@ -71,7 +78,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           disableTransitionOnChange
         >
           <LanguageProvider>
-            <FontProvider>{children}</FontProvider>
+            <FontProvider>
+              <PublicationProvider publication={publication}>{children}</PublicationProvider>
+            </FontProvider>
           </LanguageProvider>
         </ThemeProvider>
         <Toaster position="top-right" richColors />
