@@ -41,7 +41,7 @@ jobs:
         run: npm run build:opennext
 
       - name: Deploy Cloudflare Worker
-        run: npm run deploy:worker
+        run: npm run deploy:opennext
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -10,6 +10,7 @@
     "build:opennext": "opennextjs-cloudflare build",
     "build:cf": "opennextjs-cloudflare build && wrangler deploy",
     "deploy:cf": "opennextjs-cloudflare build && wrangler deploy",
+    "deploy:opennext": "opennextjs-cloudflare deploy",
     "deploy:worker": "wrangler deploy",
     "preview:cf": "opennextjs-cloudflare build && wrangler dev"
   },
