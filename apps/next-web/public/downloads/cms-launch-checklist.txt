@@ -1,0 +1,11 @@
+CMS Launch Checklist
+====================
+
+- Define categories and tags
+- Create homepage hero content
+- Add featured posts
+- Upload downloadable guides
+- Set article SEO titles
+- Review footer legal pages
+- Test search and navigation
+- Publish and share

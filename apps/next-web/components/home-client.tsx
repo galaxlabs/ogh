@@ -15,6 +15,8 @@ import { ReviewCard } from "@/components/review-card";
 import { CategoryCard } from "@/components/category-card";
 import { NewsletterSignup } from "@/components/newsletter-signup";
 import { useLanguage } from "@/components/language-provider";
+import { categoryHref } from "@/lib/cms";
+import type { CategoryNode } from "@/lib/cms";
 import type { Article, CategoryStats } from "@/lib/data";
 
 const DISCOVERY_LANES = [
@@ -48,12 +50,16 @@ const AI_FOCUS_AREAS = [
 export function HomeClient({
   articles,
   categoryStats,
+  categoryTree = [],
+  currentSubdomain = null,
   publication = null,
   heroImage,
   heroImageAlt,
 }: {
   articles: Article[];
   categoryStats: CategoryStats[];
+  categoryTree?: CategoryNode[];
+  currentSubdomain?: string | null;
   publication?: { name: string; tagline: string } | null;
   heroImage?: string;
   heroImageAlt?: string;
@@ -99,6 +105,15 @@ export function HomeClient({
 
   const slugify = (value: string) =>
     value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+  // Content-type gating: Downloads section only renders when the category tree
+  // for this publication supports that content type.
+  const hasContentType = (type: string) => {
+    const walk = (list: CategoryNode[]): boolean =>
+      list.some((n) => (n.content_types || []).includes(type) || walk(n.children || []));
+    return categoryTree.length > 0 ? walk(categoryTree) : true;
+  };
+  const showDownloads = hasContentType("Download");
 
   const quickDiscovery = articles
     .filter((article) => {
@@ -269,9 +284,20 @@ export function HomeClient({
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {categoryStats.map((category, index) => (
-              <CategoryCard key={category.id} category={category} index={index} />
-            ))}
+            {categoryStats.map((category, index) => {
+              const node = categoryTree.find((n) => n.slug === category.slug || n.name === category.name);
+              const href = node ? categoryHref(node, currentSubdomain) : undefined;
+              const external = Boolean(node?.subdomain && node.subdomain !== currentSubdomain);
+              return (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  index={index}
+                  href={href}
+                  external={external}
+                />
+              );
+            })}
           </div>
 
           <div className="mt-8 text-center">
@@ -401,21 +427,23 @@ export function HomeClient({
         </div>
       </section>
 
-      <section className="bg-muted/30 py-20">
-        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="mb-4 text-3xl font-bold md:text-4xl">Categorized software downloads</h2>
-          <p className="mb-8 text-lg text-muted-foreground">
-            Find organized download resources for AI tools, programming guides, security software,
-            and Urdu-first tutorials.
-          </p>
-          <Link href="/downloads">
-            <Button size="lg" className="gap-2">
-              Explore Downloads
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-      </section>
+      {showDownloads && (
+        <section className="bg-muted/30 py-20">
+          <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
+            <h2 className="mb-4 text-3xl font-bold md:text-4xl">Categorized software downloads</h2>
+            <p className="mb-8 text-lg text-muted-foreground">
+              Find organized download resources for AI tools, programming guides, security software,
+              and Urdu-first tutorials.
+            </p>
+            <Link href="/downloads">
+              <Button size="lg" className="gap-2">
+                Explore Downloads
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </section>
+      )}
 
       <section className="bg-gradient-to-br from-primary/10 to-secondary/10 py-20">
         <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">

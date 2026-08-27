@@ -38,6 +38,22 @@ export interface PublishedArticleDetail extends PublishedArticle {
   related?: PublishedArticle[];
 }
 
+export interface CategoryNode {
+  name: string;
+  code: string;
+  slug: string;
+  description: string;
+  icon: string;
+  publication_code: string | null;
+  subdomain: string | null;
+  hostname: string | null;
+  is_global: boolean;
+  sort_order: number;
+  featured: boolean;
+  content_types: string[];
+  children: CategoryNode[];
+}
+
 const FALLBACK_API = "https://api.openguidehub.org";
 
 function apiBase(): string {
@@ -91,4 +107,16 @@ export async function fetchArticleBySlug(
   const params = new URLSearchParams({ slug });
   if (publication) params.set("publication", publication);
   return getJson<PublishedArticleDetail>(`get_by_slug?${params.toString()}`);
+}
+
+export async function fetchCategories(opts: {
+  code?: string;
+  host?: string;
+}): Promise<CategoryNode[] | null> {
+  const params = new URLSearchParams();
+  if (opts.code) params.set("code", opts.code);
+  if (opts.host) params.set("host", opts.host);
+  const qs = params.toString() ? `?${params.toString()}` : "";
+  const data = await getJson<{ categories: CategoryNode[] }>(`list_categories${qs}`);
+  return data?.categories ?? null;
 }

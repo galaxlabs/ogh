@@ -59,6 +59,8 @@ export const viewport: Viewport = {
   ],
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Publication subdomain from middleware header (server-side read).
   const headerStore = await headers();

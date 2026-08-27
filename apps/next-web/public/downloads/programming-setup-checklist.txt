@@ -1,0 +1,10 @@
+Programming Setup Checklist
+
+[ ] Install editor and terminal tools
+[ ] Confirm Python or Node.js version
+[ ] Install Git and verify access
+[ ] Test one sample project
+[ ] Write tutorial steps in order
+[ ] Add screenshots or output examples
+[ ] Keep the article readable and non-repetitive
+[ ] Link to the internal downloads section instead of raw software URLs
