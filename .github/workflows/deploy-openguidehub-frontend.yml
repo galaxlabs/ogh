@@ -1,0 +1,47 @@
+name: Deploy OpenGuideHub Frontend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/next-web/**"
+      - ".github/workflows/deploy-openguidehub-frontend.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build and deploy openguidehub-frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/next-web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/next-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Build OpenNext for Cloudflare
+        run: npx opennextjs-cloudflare build
+
+      - name: Deploy Cloudflare Worker
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
