@@ -54,7 +54,9 @@ export interface CategoryNode {
   children: CategoryNode[];
 }
 
-const FALLBACK_API = "https://api.openguidehub.org";
+const FALLBACK_API = "https://pf.digigalaxy.cloud";
+const CACHE_PREFIX = "ogh_api_";
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 function apiBase(): string {
   const configured = process.env.NEXT_PUBLIC_ADMIN_API_URL?.trim();
@@ -62,15 +64,54 @@ function apiBase(): string {
   return FALLBACK_API;
 }
 
-async function getJson<T>(path: string): Promise<T | null> {
+interface CacheEntry<T> {
+  data: T;
+  ts: number;
+}
+
+function cacheGet<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
   try {
-    const res = await fetch(`${apiBase()}/api/method/open_guide_hub.api.galaxy_ops.${path}`, {
-      next: { revalidate: 60 },
-      headers: { Accept: "application/json" },
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if (!raw) return null;
+    const entry: CacheEntry<T> = JSON.parse(raw);
+    if (Date.now() - entry.ts > CACHE_TTL_MS) {
+      localStorage.removeItem(CACHE_PREFIX + key);
+      return null;
+    }
+    return entry.data;
+  } catch {
+    return null;
+  }
+}
+
+function cacheSet<T>(key: string, data: T): void {
+  if (typeof window === "undefined") return;
+  try {
+    const entry: CacheEntry<T> = { data, ts: Date.now() };
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(entry));
+  } catch {
+    // localStorage full or unavailable — ignore
+  }
+}
+
+async function getJson<T>(path: string): Promise<T | null> {
+  const cached = cacheGet<T>(path);
+  if (cached !== null) return cached;
+
+  try {
+    const res = await fetch(`${apiBase()}/api/method/gop.api.${path}`, {
+      next: { revalidate: 120 },
+      headers: {
+        Accept: "application/json",
+        "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300",
+      },
     });
     if (!res.ok) return null;
     const data = await res.json();
-    return data?.message ?? null;
+    const result = data?.message ?? null;
+    if (result !== null) cacheSet(path, result);
+    return result;
   } catch {
     return null;
   }

@@ -4,21 +4,24 @@ import { Ubuntu, Noto_Naskh_Arabic, Noto_Nastaliq_Urdu, Amiri, Scheherazade_New,
 export const ubuntu = Ubuntu({
   variable: "--font-ubuntu",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
+  weight: ["400", "700"],
+  display: "swap",
 });
 
 // Arabic — modern Naskh (default Arabic body)
 export const notoNaskh = Noto_Naskh_Arabic({
   variable: "--font-noto-naskh",
   subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"],
+  display: "swap",
 });
 
 // Urdu — Nastaliq (classic calligraphic script, used for headlines/titles)
 export const notoNastaliq = Noto_Nastaliq_Urdu({
   variable: "--font-noto-nastaliq",
   subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"],
+  display: "swap",
 });
 
 // Urdu — Gulzar (Nastaliq-inspired display)
@@ -26,6 +29,7 @@ export const gulzar = Gulzar({
   variable: "--font-gulzar",
   subsets: ["arabic"],
   weight: ["400"],
+  display: "swap",
 });
 
 // Arabic — traditional Naskh (Amiri)
@@ -33,27 +37,31 @@ export const amiri = Amiri({
   variable: "--font-amiri",
   subsets: ["arabic"],
   weight: ["400", "700"],
+  display: "swap",
 });
 
 // Arabic — traditional Naskh (Scheherazade)
 export const scheherazade = Scheherazade_New({
   variable: "--font-scheherazade",
   subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"],
+  display: "swap",
 });
 
 // Arabic / Urdu — Lateef (Naskh, comfortable long-form reading)
 export const lateef = Lateef({
   variable: "--font-lateef",
   subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"],
+  display: "swap",
 });
 
 // Arabic — Reem Kufi (Kufi geometric)
 export const reemKufi = Reem_Kufi({
   variable: "--font-reem-kufi",
   subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"],
+  display: "swap",
 });
 
 // Arabic — Aref Ruqaa (Ruqaa calligraphic)
@@ -61,6 +69,7 @@ export const arefRuqaa = Aref_Ruqaa({
   variable: "--font-aref-ruqaa",
   subsets: ["arabic"],
   weight: ["400", "700"],
+  display: "swap",
 });
 
 export const FONT_VARIABLES = `${ubuntu.variable} ${notoNaskh.variable} ${notoNastaliq.variable} ${gulzar.variable} ${amiri.variable} ${scheherazade.variable} ${lateef.variable} ${reemKufi.variable} ${arefRuqaa.variable}`;

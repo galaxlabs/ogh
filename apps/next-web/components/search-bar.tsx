@@ -39,7 +39,7 @@ export function SearchBar({
     if (onSearch) {
       onSearch(q);
     } else {
-      router.push(`/articles?q=${encodeURIComponent(q)}`);
+      router.push(`/search?q=${encodeURIComponent(q)}`);
     }
   };
 
@@ -61,12 +61,13 @@ export function SearchBar({
 }
 
 export function SearchButton({ onOpen }: { onOpen?: () => void }) {
+  const router = useRouter();
   return (
     <Button
       variant="ghost"
       size="sm"
       aria-label="Search"
-      onClick={onOpen}
+      onClick={() => { if (onOpen) onOpen(); else router.push("/search"); }}
       className="text-muted-foreground hover:text-foreground"
     >
       <Search className="h-5 w-5" />

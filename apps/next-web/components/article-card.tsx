@@ -32,6 +32,7 @@ export function ArticleCard({ article, index = 0, locale = "en-US", variant = "g
               alt={article.title}
               width={240}
               height={135}
+              loading="lazy"
               className="h-24 w-36 shrink-0 rounded-lg object-cover sm:h-28 sm:w-44"
             />
             <div className="flex flex-1 flex-col justify-center">
@@ -76,6 +77,7 @@ export function ArticleCard({ article, index = 0, locale = "en-US", variant = "g
             alt={article.title}
             width={800}
             height={450}
+            loading="lazy"
             className="aspect-video w-full rounded-t-xl object-cover"
           />
         </Link>

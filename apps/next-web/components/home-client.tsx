@@ -18,15 +18,8 @@ import { useLanguage } from "@/components/language-provider";
 import { categoryHref } from "@/lib/cms";
 import type { CategoryNode } from "@/lib/cms";
 import type { Article, CategoryStats } from "@/lib/data";
-
-const DISCOVERY_LANES = [
-  { label: "All", value: "all" },
-  { label: "AI", value: "artificial-intelligence" },
-  { label: "AI Tools", value: "ai-tools" },
-  { label: "FOSS", value: "foss-updates" },
-  { label: "Tutorials", value: "tutorials" },
-  { label: "Security", value: "cybersecurity" },
-];
+import type { Publication } from "@/lib/publications";
+import { publicationVisualTheme } from "@/lib/publications";
 
 const AI_FOCUS_AREAS = [
   {
@@ -60,16 +53,20 @@ export function HomeClient({
   categoryStats: CategoryStats[];
   categoryTree?: CategoryNode[];
   currentSubdomain?: string | null;
-  publication?: { name: string; tagline: string } | null;
+  publication?: Publication | null;
   heroImage?: string;
   heroImageAlt?: string;
 }) {
   const { translations } = useLanguage();
   const home = translations?.home || {};
   const common = translations?.common || {};
+  const theme = publicationVisualTheme(publication);
 
   const [discoverQuery, setDiscoverQuery] = useState("");
   const [activeLane, setActiveLane] = useState("all");
+
+  const slugify = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
   const featuredArticles = articles.filter((a) => a.featured);
   const latestArticles = articles.slice(0, 4);
@@ -81,6 +78,18 @@ export function HomeClient({
   const scienceArticles = articles
     .filter((a) => ["Physics", "Chemistry", "Biology"].includes(a.category))
     .slice(0, 2);
+  const discoveryLanes = [
+    { label: "All", value: "all" },
+    ...(publication
+      ? publication.categories.map((category) => ({ label: category, value: slugify(category) }))
+      : [
+          { label: "AI", value: "artificial-intelligence" },
+          { label: "AI Tools", value: "ai-tools" },
+          { label: "FOSS", value: "foss-updates" },
+          { label: "Tutorials", value: "tutorials" },
+          { label: "Security", value: "cybersecurity" },
+        ]),
+  ];
 
   const spotlightRows = [
     {
@@ -101,10 +110,7 @@ export function HomeClient({
         .filter((article) => ["FOSS Updates", "Open Source", "Technology"].includes(article.category))
         .slice(0, 3),
     },
-  ];
-
-  const slugify = (value: string) =>
-    value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  ].filter((row) => row.items.length > 0);
 
   // Content-type gating: Downloads section only renders when the category tree
   // for this publication supports that content type.
@@ -113,7 +119,9 @@ export function HomeClient({
       list.some((n) => (n.content_types || []).includes(type) || walk(n.children || []));
     return categoryTree.length > 0 ? walk(categoryTree) : true;
   };
-  const showDownloads = hasContentType("Download");
+  const showDownloads = !publication && hasContentType("Download");
+  const showAiFocus = !publication || publication.key === "ai";
+  const showScienceSection = !publication || publication.key === "science";
 
   const quickDiscovery = articles
     .filter((article) => {
@@ -129,7 +137,7 @@ export function HomeClient({
 
   return (
     <>
-      <section className="relative flex min-h-[90vh] items-center justify-center overflow-hidden">
+      <section className={`relative flex min-h-[90vh] items-center justify-center overflow-hidden border-b ${theme.hero}`}>
         <div className="absolute inset-0">
           <Image
             src={
@@ -142,12 +150,15 @@ export function HomeClient({
             sizes="100vw"
             className="object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-black/70" />
+          <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/55 to-black/70" />
+          {publication?.key === "science" && <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(45,212,191,0.28),transparent_28%)]" />}
+          {publication?.key === "tech" && <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(59,130,246,0.22)_1px,transparent_1px),linear-gradient(rgba(59,130,246,0.16)_1px,transparent_1px)] bg-[size:56px_56px]" />}
+          {publication?.key === "ai" && <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_25%,rgba(217,70,239,0.32),transparent_30%)]" />}
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary backdrop-blur-sm">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
               <Sparkles className="h-4 w-4" />
               <span>{publication ? publication.name : "Your Knowledge Hub"}</span>
             </div>
@@ -155,8 +166,25 @@ export function HomeClient({
               {publication ? publication.tagline : home.heroTitle}
             </h1>
             <p className="mx-auto mb-8 max-w-3xl text-xl leading-relaxed text-white/90">
-              {publication ? home.heroSubtitle : home.heroSubtitle}
+              {publication?.key === "science"
+                ? "A focused science reading desk for physics, chemistry, biology, earth science, astronomy, and environmental learning."
+                : publication?.key === "tech"
+                  ? "A developer publication for programming, cloud infrastructure, security, data, and modern web engineering."
+                  : publication?.key === "ai"
+                    ? "An AI publication for tools, agents, automation, and practical artificial intelligence guides."
+                    : home.heroSubtitle}
             </p>
+            {publication && (
+              <div className="mx-auto mb-8 flex max-w-4xl flex-wrap justify-center gap-2">
+                {publication.categories.map((category) => (
+                  <Link key={category} href={`/articles?category=${encodeURIComponent(slugify(category))}`}>
+                    <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-sm text-white backdrop-blur transition-colors hover:bg-white/20">
+                      {category}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
             <div className="flex flex-col justify-center gap-4 sm:flex-row">
               <Link href="/articles">
                 <Button size="lg" className="group gap-2 transition-all duration-200">
@@ -194,7 +222,7 @@ export function HomeClient({
             </div>
 
             <div className="mb-6 flex flex-wrap gap-2">
-              {DISCOVERY_LANES.map((lane) => (
+              {discoveryLanes.map((lane) => (
                 <Button
                   key={lane.value}
                   variant={activeLane === lane.value ? "default" : "outline"}
@@ -215,36 +243,38 @@ export function HomeClient({
         </div>
       </section>
 
-      <section className="border-b bg-muted/20 py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-6 flex items-end justify-between">
-            <div>
-              <h2 className="mb-2 text-2xl font-bold md:text-3xl">Magazine briefing</h2>
-              <p className="text-muted-foreground">Fast reading lanes for builders, learners, and open-source readers.</p>
+      {spotlightRows.length > 0 && (
+        <section className="border-b bg-muted/20 py-12">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-6 flex items-end justify-between">
+              <div>
+                <h2 className="mb-2 text-2xl font-bold md:text-3xl">Magazine briefing</h2>
+                <p className="text-muted-foreground">Fast reading lanes for this publication.</p>
+              </div>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-3">
+              {spotlightRows.map((row) => (
+                <div key={row.title} className="rounded-2xl border bg-background p-5">
+                  <h3 className="mb-4 text-lg font-semibold">{row.title}</h3>
+                  <div className="space-y-4">
+                    {row.items.map((article) => (
+                      <Link key={article.id} href={`/articles/${article.slug}`} className="group block">
+                        <div className="line-clamp-2 text-sm font-medium transition-colors group-hover:text-primary">
+                          {article.title}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {article.category} • {article.readingTime} min read
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-
-          <div className="grid gap-6 lg:grid-cols-3">
-            {spotlightRows.map((row) => (
-              <div key={row.title} className="rounded-2xl border bg-background p-5">
-                <h3 className="mb-4 text-lg font-semibold">{row.title}</h3>
-                <div className="space-y-4">
-                  {row.items.map((article) => (
-                    <Link key={article.id} href={`/articles/${article.slug}`} className="group block">
-                      <div className="line-clamp-2 text-sm font-medium transition-colors group-hover:text-primary">
-                        {article.title}
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {article.category} • {article.readingTime} min read
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="bg-muted/30 py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -311,28 +341,30 @@ export function HomeClient({
         </div>
       </section>
 
-      <section className="bg-gradient-to-br from-primary/5 to-secondary/10 py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold md:text-4xl">
-              AI readers, tools, and FOSS updates
-            </h2>
-            <p className="mx-auto max-w-3xl text-muted-foreground">
-              The platform is now structured for multilingual reading, AI-assisted explanations,
-              agent workflows, and open source update publishing.
-            </p>
-          </div>
+      {showAiFocus && (
+        <section className="bg-gradient-to-br from-primary/5 to-secondary/10 py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-12 text-center">
+              <h2 className="mb-4 text-3xl font-bold md:text-4xl">
+                AI readers, tools, and FOSS updates
+              </h2>
+              <p className="mx-auto max-w-3xl text-muted-foreground">
+                The platform is now structured for multilingual reading, AI-assisted explanations,
+                agent workflows, and open source update publishing.
+              </p>
+            </div>
 
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-            {AI_FOCUS_AREAS.map((item) => (
-              <div key={item.title} className="rounded-2xl border bg-background p-6 shadow-sm">
-                <h3 className="mb-2 text-xl font-semibold">{item.title}</h3>
-                <p className="text-sm leading-6 text-muted-foreground">{item.text}</p>
-              </div>
-            ))}
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              {AI_FOCUS_AREAS.map((item) => (
+                <div key={item.title} className="rounded-2xl border bg-background p-6 shadow-sm">
+                  <h3 className="mb-2 text-xl font-semibold">{item.title}</h3>
+                  <p className="text-sm leading-6 text-muted-foreground">{item.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="bg-muted/30 py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -408,24 +440,26 @@ export function HomeClient({
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="mb-8 text-3xl font-bold md:text-4xl">{home.scienceSection}</h2>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-            {scienceArticles.map((article, index) => (
-              <ArticleCard key={article.id} article={article} index={index} />
-            ))}
+      {showScienceSection && scienceArticles.length > 0 && (
+        <section className="py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <h2 className="mb-8 text-3xl font-bold md:text-4xl">{home.scienceSection}</h2>
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+              {scienceArticles.map((article, index) => (
+                <ArticleCard key={article.id} article={article} index={index} />
+              ))}
+            </div>
+            <div className="mt-8 text-center">
+              <Link href="/science">
+                <Button variant="outline" className="gap-2">
+                  {common.viewAll}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
-          <div className="mt-8 text-center">
-            <Link href="/science">
-              <Button variant="outline" className="gap-2">
-                {common.viewAll}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {showDownloads && (
         <section className="bg-muted/30 py-20">

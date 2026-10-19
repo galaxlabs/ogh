@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useLanguage } from "@/components/language-provider";
+import { usePublication } from "@/components/publication-provider";
+import { PUBLICATIONS } from "@/lib/publications";
 import { Facebook, Github, Linkedin, Mail, Twitter } from "lucide-react";
 
 const socialLinks = [
@@ -14,21 +16,35 @@ const socialLinks = [
 
 export function Footer() {
   const { translations } = useLanguage();
+  const { publication } = usePublication();
   const t = translations || {};
   const nav = t.nav || {};
   const footer = t.footer || {};
 
+  const publicationLinks = Object.values(PUBLICATIONS)
+    .filter((item) => item.categories.length > 0)
+    .map((item) => ({
+      label: item.name.replace("OpenGuideHub ", ""),
+      path: `https://${item.subdomain}.openguidehub.org/`,
+      description: item.tagline,
+    }));
+
   const footerLinks = {
-    categories: [
-      { label: nav.science || "Science", path: "/science" },
-      { label: nav.technology || "Technology", path: "/technology" },
-      { label: nav.openSource || "Open Source", path: "/open-source" },
-      { label: nav.tutorials || "Tutorials", path: "/tutorials" },
-    ],
+    categories: publication
+      ? publication.categories.map((category) => ({
+          label: category,
+          path: `/articles?category=${encodeURIComponent(category.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""))}`,
+        }))
+      : [
+          { label: nav.science || "Science", path: "https://science.openguidehub.org/" },
+          { label: nav.technology || "Technology", path: "https://tech.openguidehub.org/" },
+          { label: "AI", path: "https://ai.openguidehub.org/" },
+          { label: "News", path: "https://news.openguidehub.org/" },
+        ],
     resources: [
       { label: nav.articles || "Articles", path: "/articles" },
-      { label: nav.downloads || "Downloads", path: "/downloads" },
-      { label: nav.reviews || "Reviews", path: "/reviews" },
+      ...(!publication ? [{ label: nav.downloads || "Downloads", path: "/downloads" }] : []),
+      ...(!publication ? [{ label: nav.reviews || "Reviews", path: "/reviews" }] : []),
       { label: nav.categories || "Categories", path: "/categories" },
     ],
     company: [
@@ -53,7 +69,7 @@ export function Footer() {
               </div>
               <span className="text-xl font-bold">OpenGuideHub</span>
             </Link>
-            <p className="max-w-xs text-sm leading-relaxed">{footer.description}</p>
+            <p className="max-w-xs text-sm leading-relaxed">{publication?.tagline || footer.description}</p>
           </div>
 
           {[
@@ -75,6 +91,25 @@ export function Footer() {
               </ul>
             </div>
           ))}
+        </div>
+
+        <div className="mb-8 rounded-2xl border bg-background/70 p-5">
+          <h3 className="mb-3 font-semibold">OpenGuideHub Publication Network</h3>
+          <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
+            Explore related OpenGuideHub publications. These cross-links connect each topic site into one blogging network.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {publicationLinks.map((link) => (
+              <a
+                key={link.path}
+                href={link.path}
+                className="rounded-xl border bg-muted/30 p-3 transition-colors hover:border-primary hover:bg-primary/10"
+              >
+                <div className="font-medium">{link.label}</div>
+                <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{link.description}</div>
+              </a>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col items-center justify-between gap-4 border-t pt-8 md:flex-row">

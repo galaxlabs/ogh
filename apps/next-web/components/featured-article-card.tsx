@@ -22,6 +22,7 @@ export function FeaturedArticleCard({ article, large = false, locale = "en-US" }
             alt={article.title}
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
+            loading="lazy"
             className="object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />

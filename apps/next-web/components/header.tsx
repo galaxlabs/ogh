@@ -11,27 +11,44 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { FontSwitcher } from "@/components/font-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SearchBar, SearchButton } from "@/components/search-bar";
+import { usePublication } from "@/components/publication-provider";
+
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
 
 export function Header() {
   const pathname = usePathname();
   const { translations } = useLanguage();
+  const { publication } = usePublication();
   const [isOpen, setIsOpen] = useState(false);
 
   const nav = translations?.nav || {};
 
-  const navigationItems = [
-    { label: nav.home || "Home", path: "/" },
-    { label: nav.categories || "Categories", path: "/categories" },
-    { label: nav.articles || "Articles", path: "/articles" },
-    { label: nav.downloads || "Downloads", path: "/downloads" },
-    { label: nav.tutorials || "Tutorials", path: "/tutorials" },
-    { label: nav.reviews || "Reviews", path: "/reviews" },
-    { label: nav.science || "Science", path: "/science" },
-    { label: nav.technology || "Technology", path: "/technology" },
-    { label: nav.openSource || "Open Source", path: "/open-source" },
-    { label: nav.about || "About", path: "/about" },
-    { label: nav.contact || "Contact", path: "/contact" },
-  ];
+  const navigationItems = publication
+    ? [
+        { label: nav.home || "Home", path: "/" },
+        { label: nav.categories || "Categories", path: "/categories" },
+        { label: nav.articles || "Articles", path: "/articles" },
+        ...publication.categories.slice(0, 4).map((category) => ({
+          label: category,
+          path: `/articles?category=${encodeURIComponent(slugify(category))}`,
+        })),
+        { label: nav.about || "About", path: "/about" },
+      ]
+    : [
+        { label: nav.home || "Home", path: "/" },
+        { label: nav.categories || "Categories", path: "/categories" },
+        { label: nav.articles || "Articles", path: "/articles" },
+        { label: nav.downloads || "Downloads", path: "/downloads" },
+        { label: nav.tutorials || "Tutorials", path: "/tutorials" },
+        { label: nav.reviews || "Reviews", path: "/reviews" },
+        { label: nav.science || "Science", path: "/science" },
+        { label: nav.technology || "Technology", path: "/technology" },
+        { label: nav.openSource || "Open Source", path: "/open-source" },
+        { label: nav.about || "About", path: "/about" },
+        { label: nav.contact || "Contact", path: "/contact" },
+      ];
 
   const isActive = (path: string) => pathname === path;
 
@@ -44,7 +61,7 @@ export function Header() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary">
                 <span className="text-lg font-bold text-white">O</span>
               </div>
-              <span className="hidden text-xl font-bold md:inline">OpenGuideHub</span>
+              <span className="hidden text-xl font-bold md:inline">{publication?.name || "OpenGuideHub"}</span>
             </Link>
 
             <nav className="hidden items-center gap-1 lg:flex">

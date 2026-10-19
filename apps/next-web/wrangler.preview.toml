@@ -15,7 +15,7 @@ not_found_handling = "none"
 # Bindings
 [vars]
 NEXT_PUBLIC_SITE_URL = "https://openguidehub.org"
-NEXT_PUBLIC_ADMIN_API_URL = "https://api.openguidehub.org"
+NEXT_PUBLIC_ADMIN_API_URL = "https://pf.digigalaxy.cloud"
 
 [observability]
 enabled = true

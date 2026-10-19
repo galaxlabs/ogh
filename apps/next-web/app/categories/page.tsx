@@ -5,8 +5,7 @@ import { CategoriesExplorer } from "@/components/categories-explorer";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { loadCategoryTree, flattenCategoryTree, categoryNodeToStats } from "@/lib/cms";
 import { buildCategoryStats } from "@/lib/data";
-import { articles } from "@/lib/data";
-import { getPublicationBySubdomain } from "@/lib/publications";
+import { getPublicationBySubdomain, filterArticlesForPublication, publicationVisualTheme } from "@/lib/publications";
 
 export const metadata: Metadata = {
   title: "Categories",
@@ -17,15 +16,17 @@ export const metadata: Metadata = {
 export default async function CategoriesPage() {
   const headerStore = await headers();
   const publication = getPublicationBySubdomain(headerStore.get("x-ogh-publication"));
+  const theme = publicationVisualTheme(publication);
+  const scopedArticles = filterArticlesForPublication(publication);
   const tree = await loadCategoryTree(publication ? { code: publication.code } : {});
   const nodes = flattenCategoryTree(tree);
 
   // Merge CMS nodes with static article counts (fallback-friendly).
-  const baseStats = buildCategoryStats([], articles);
+  const baseStats = buildCategoryStats([], scopedArticles);
   const stats = nodes.map((node) => {
     const count =
       baseStats.find((s) => s.slug === node.slug)?.count ||
-      articles.filter((a) => a.category === node.name).length;
+      scopedArticles.filter((a) => a.category === node.name).length;
     return categoryNodeToStats(node, count);
   });
 
@@ -34,12 +35,21 @@ export default async function CategoriesPage() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <Breadcrumb items={[{ label: "Categories" }]} />
 
-        <div className="mb-8">
-          <h1 className="mb-4 text-4xl font-bold md:text-5xl">
+        <div className={`mb-8 overflow-hidden rounded-[2rem] border p-8 md:p-10 ${theme.hero}`}>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {publication?.categories.slice(0, 6).map((category) => (
+              <span key={category} className={`rounded-full px-3 py-1 text-xs font-medium ${theme.badge}`}>
+                {category}
+              </span>
+            ))}
+          </div>
+          <h1 className="mb-4 max-w-4xl text-4xl font-bold tracking-tight md:text-6xl">
             {publication ? `${publication.name} Categories` : "All Categories"}
           </h1>
-          <p className="max-w-2xl text-lg text-muted-foreground">
-            Explore our comprehensive collection of topics covering science, technology, and more
+          <p className="max-w-3xl text-lg text-muted-foreground md:text-xl">
+            {publication
+              ? publication.tagline
+              : "Explore our comprehensive collection of topics covering science, technology, and more"}
           </p>
         </div>
 

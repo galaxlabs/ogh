@@ -73,6 +73,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${FONT_VARIABLES} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-[family-name:var(--font-ubuntu)]">
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "globalThis.__name=globalThis.__name||function(fn){return fn};",
+          }}
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

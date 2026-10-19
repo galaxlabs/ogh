@@ -3,13 +3,20 @@ import { fetchCategories } from "@/lib/galaxy-ops-api";
 import { categories as staticCategories } from "@/lib/data";
 import { slugifyCategoryName } from "@/lib/data";
 import type { CategoryStats } from "@/lib/data";
+import { PUBLICATIONS } from "@/lib/publications";
 
 export type { CategoryNode };
 
 // Fallback: build a flat node list from the static categories when the API is
 // unreachable (e.g. local dev or DNS not propagated yet).
-function staticCategoryNodes(): CategoryNode[] {
-  return staticCategories.map((cat: { id: number; name: string; slug: string; description: string; icon: string }) => {
+function staticCategoryNodes(opts: { code?: string } = {}): CategoryNode[] {
+  const publication = opts.code
+    ? Object.values(PUBLICATIONS).find((pub) => pub.code === opts.code)
+    : null;
+  const allowed = publication ? new Set(publication.categories) : null;
+  const knownCategories = staticCategories
+    .filter((cat: { name: string }) => !allowed || allowed.has(cat.name))
+    .map((cat: { id: number; name: string; slug: string; description: string; icon: string }) => {
     return {
       name: cat.name,
       code: cat.slug.toUpperCase().replace(/-/g, "_"),
@@ -26,16 +33,44 @@ function staticCategoryNodes(): CategoryNode[] {
       children: [],
     };
   });
+  if (!publication) return knownCategories;
+
+  const knownNames = new Set(knownCategories.map((category) => category.name));
+  const publicationCategories = publication.categories
+    .filter((name) => !knownNames.has(name))
+    .map((name, index) => ({
+      name,
+      code: name.toUpperCase().replace(/[^A-Z0-9]+/g, "_"),
+      slug: slugifyCategoryName(name),
+      description: `${name} guides and practical reference material.`,
+      icon: "BookOpen",
+      publication_code: publication.code,
+      subdomain: publication.subdomain,
+      hostname: publication.primaryHostname,
+      is_global: false,
+      sort_order: knownCategories.length + index,
+      featured: index < 3,
+      content_types: ["Article", "Guide", "Tutorial"],
+      children: [],
+    }));
+  return [...knownCategories, ...publicationCategories];
 }
 
 export async function loadCategoryTree(opts: { code?: string; host?: string } = {}): Promise<CategoryNode[]> {
+  const fallback = staticCategoryNodes(opts);
+  if (opts.code && fallback.length > 0) {
+    // GOP currently returns content types (Article/Tutorial) for publication categories.
+    // For subdomains, the publication map is the authoritative topic taxonomy.
+    return fallback;
+  }
+
   try {
     const api = await fetchCategories(opts);
     if (api && api.length > 0) return api;
   } catch {
     // fall through to static
   }
-  return staticCategoryNodes();
+  return fallback;
 }
 
 // Flatten a tree into a list (roots + children), preserving order.

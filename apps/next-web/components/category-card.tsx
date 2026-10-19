@@ -6,6 +6,8 @@ import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { CategoryIcon } from "@/components/icon-mapper";
+import { usePublication } from "@/components/publication-provider";
+import { publicationVisualTheme } from "@/lib/publications";
 import type { CategoryStats } from "@/lib/data";
 
 interface CategoryCardProps {
@@ -23,13 +25,15 @@ export function CategoryCard({
   external = false,
   childCount = 0,
 }: CategoryCardProps) {
+  const { publication } = usePublication();
+  const theme = publicationVisualTheme(publication);
   const target = href || `/articles?category=${encodeURIComponent(category.slug || category.name)}`;
 
   const content = (
-    <Card className="group h-full transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+    <Card className={`group h-full transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${theme.card}`}>
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
-          <div className="rounded-xl bg-primary/10 p-3 transition-colors group-hover:bg-primary/20">
+          <div className={`rounded-xl p-3 transition-colors ${theme.badge}`}>
             <CategoryIcon name={category.icon} className="h-6 w-6 text-primary" />
           </div>
           <div className="flex-1">
