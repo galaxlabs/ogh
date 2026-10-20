@@ -29,6 +29,7 @@ export interface PublishedArticle {
   seo_title?: string;
   meta_description?: string;
   primary_keyword?: string;
+  publication?: string;
 }
 
 export interface PublishedArticleDetail extends PublishedArticle {
@@ -126,16 +127,16 @@ export async function fetchPublicationConfig(code?: string, host?: string): Prom
 }
 
 export async function fetchPublishedArticles(opts: {
-  publication: string;
+  publication?: string;
   language?: string;
   category?: string;
   page?: number;
 }): Promise<{ items: PublishedArticle[]; total: number; page: number } | null> {
   const params = new URLSearchParams({
-    publication: opts.publication,
     page: String(opts.page || 1),
     page_size: "50",
   });
+  if (opts.publication) params.set("publication", opts.publication);
   if (opts.language) params.set("language", opts.language);
   if (opts.category) params.set("category", opts.category);
   return getJson(`list_published?${params.toString()}`);

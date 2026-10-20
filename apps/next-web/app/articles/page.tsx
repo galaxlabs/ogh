@@ -7,6 +7,8 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { CategoryLinkNetwork } from "@/components/category-link-network";
 import { categories, buildCategoryStats } from "@/lib/data";
 import { getPublicationBySubdomain, filterArticlesForPublication } from "@/lib/publications";
+import { publishedArticleToArticle } from "@/lib/cms";
+import { fetchPublishedArticles } from "@/lib/galaxy-ops-api";
 
 export const metadata: Metadata = {
   title: "Articles",
@@ -17,7 +19,14 @@ export const metadata: Metadata = {
 export default async function ArticlesPage() {
   const headerStore = await headers();
   const publication = getPublicationBySubdomain(headerStore.get("x-ogh-publication"));
-  const scopedArticles = filterArticlesForPublication(publication);
+  const fallbackArticles = filterArticlesForPublication(publication);
+  const response = await fetchPublishedArticles({ publication: publication?.code });
+  const cmsArticles = (response?.items || []).map(publishedArticleToArticle);
+  const cmsSlugs = new Set(cmsArticles.map((article) => article.slug));
+  const scopedArticles = [
+    ...cmsArticles,
+    ...fallbackArticles.filter((article) => !cmsSlugs.has(article.slug)),
+  ];
   const categoryStats = buildCategoryStats(categories, scopedArticles);
 
   return (

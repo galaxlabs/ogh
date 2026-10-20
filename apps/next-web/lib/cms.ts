@@ -1,8 +1,8 @@
-import type { CategoryNode } from "@/lib/galaxy-ops-api";
+import type { CategoryNode, PublishedArticle, PublishedArticleDetail } from "@/lib/galaxy-ops-api";
 import { fetchCategories } from "@/lib/galaxy-ops-api";
 import { categories as staticCategories } from "@/lib/data";
 import { slugifyCategoryName } from "@/lib/data";
-import type { CategoryStats } from "@/lib/data";
+import type { Article, CategoryStats } from "@/lib/data";
 import { PUBLICATIONS } from "@/lib/publications";
 
 export type { CategoryNode };
@@ -105,6 +105,33 @@ export function hashString(value: string): number {
     hash |= 0;
   }
   return Math.abs(hash);
+}
+
+const DEFAULT_ARTICLE_IMAGE = "https://images.unsplash.com/photo-1618401471353-b98afee0b2eb";
+
+export function publishedArticleToArticle(
+  article: PublishedArticle | PublishedArticleDetail
+): Article {
+  const detail = article as PublishedArticleDetail;
+  const keyword = article.primary_keyword?.trim();
+  return {
+    id: hashString(article.name || article.slug),
+    slug: article.slug,
+    title: article.title,
+    excerpt: article.excerpt || article.meta_description || "OpenGuideHub article",
+    content: detail.body || "",
+    image: article.featured_image || DEFAULT_ARTICLE_IMAGE,
+    category: article.content_type || "Guides",
+    tags: keyword ? [keyword] : [],
+    readingTime: Math.max(1, Math.ceil((detail.body || "").split(/\s+/).filter(Boolean).length / 220)),
+    publishDate: article.published_at || article.updated_at || new Date().toISOString(),
+    author: {
+      name: "OpenGuideHub",
+      avatar: "OG",
+      bio: "Practical guides published by the OpenGuideHub editorial team.",
+    },
+    featured: false,
+  };
 }
 
 // Build the href for a category: same-subdomain -> internal; otherwise subdomain URL.
