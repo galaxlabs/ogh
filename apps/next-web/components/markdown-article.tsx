@@ -3,7 +3,7 @@ import Link from "next/link";
 
 function renderStyledSegment(segment = "", keyPrefix = "segment") {
   return String(segment || "")
-    .split(/(\*\*[^*]+\*\*|==[^=]+==)/g)
+    .split(/(`[^`]+`|\*\*[^*]+\*\*|==[^=]+==)/g)
     .filter(Boolean)
     .map((part, index) => {
       if (part.startsWith("**") && part.endsWith("**")) {
@@ -11,6 +11,16 @@ function renderStyledSegment(segment = "", keyPrefix = "segment") {
       }
       if (part.startsWith("==") && part.endsWith("==")) {
         return <mark key={`${keyPrefix}-mark-${index}`}>{part.slice(2, -2)}</mark>;
+      }
+      if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
+        return (
+          <code
+            key={`${keyPrefix}-code-${index}`}
+            className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground"
+          >
+            {part.slice(1, -1)}
+          </code>
+        );
       }
       return <Fragment key={`${keyPrefix}-text-${index}`}>{part}</Fragment>;
     });
@@ -133,6 +143,9 @@ export function renderArticleBody(content = ""): ReactNode[] {
   let paragraphLines: string[] = [];
   let listType: "ul" | "ol" | null = null;
   let listItems: string[] = [];
+  let quoteLines: string[] = [];
+  let codeLines: string[] = [];
+  let codeLanguage = "";
 
   const flushParagraph = () => {
     if (!paragraphLines.length) return;
@@ -167,12 +180,72 @@ export function renderArticleBody(content = ""): ReactNode[] {
     listType = null;
   };
 
+  const flushQuote = () => {
+    if (!quoteLines.length) return;
+    const text = quoteLines.join(" ").trim();
+    if (text) {
+      elements.push(
+        <blockquote
+          key={`quote-${elements.length}`}
+          className="mb-5 border-s-4 border-primary/30 bg-muted/30 ps-4 py-2 text-muted-foreground"
+        >
+          {renderInlineContent(text)}
+        </blockquote>
+      );
+    }
+    quoteLines = [];
+  };
+
+  const flushCode = () => {
+    if (!codeLines.length && !codeLanguage) return;
+    const code = codeLines.join("\n");
+    elements.push(
+      <div
+        key={`code-${elements.length}`}
+        className="mb-5 overflow-hidden rounded-xl border border-black/10 bg-[#0f172a] dark:border-white/10"
+      >
+        {codeLanguage && (
+          <div className="border-b border-white/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            {codeLanguage}
+          </div>
+        )}
+        <pre className="overflow-x-auto p-4 text-sm leading-7 text-slate-100">
+          <code className="font-mono">{code}</code>
+        </pre>
+      </div>
+    );
+    codeLines = [];
+    codeLanguage = "";
+  };
+
   lines.forEach((rawLine) => {
     const line = rawLine.trim();
 
     if (!line) {
       flushParagraph();
       flushList();
+      flushQuote();
+      flushCode();
+      return;
+    }
+
+    if (line.startsWith("```")) {
+      flushParagraph();
+      flushList();
+      flushQuote();
+      if (codeLines.length || codeLanguage) {
+        flushCode();
+      } else {
+        codeLanguage = line.slice(3).trim();
+      }
+      return;
+    }
+
+    if (/^>\s?/.test(line)) {
+      flushParagraph();
+      flushList();
+      flushQuote();
+      quoteLines.push(line.replace(/^>\s?/, "").trim());
       return;
     }
 
@@ -180,6 +253,8 @@ export function renderArticleBody(content = ""): ReactNode[] {
     if (headingMatch) {
       flushParagraph();
       flushList();
+      flushQuote();
+      flushCode();
       const level = headingMatch[1].length;
       const text = headingMatch[2].trim();
       const headingClass =
@@ -200,6 +275,7 @@ export function renderArticleBody(content = ""): ReactNode[] {
 
     if (/^[-*]\s+/.test(line)) {
       flushParagraph();
+      flushQuote();
       if (listType && listType !== "ul") {
         flushList();
       }
@@ -210,6 +286,7 @@ export function renderArticleBody(content = ""): ReactNode[] {
 
     if (/^\d+\.\s+/.test(line)) {
       flushParagraph();
+      flushQuote();
       if (listType && listType !== "ol") {
         flushList();
       }
@@ -222,16 +299,50 @@ export function renderArticleBody(content = ""): ReactNode[] {
       flushList();
     }
 
+    if (codeLanguage || codeLines.length) {
+      codeLines.push(line);
+      return;
+    }
+
     paragraphLines.push(line);
   });
 
   flushParagraph();
   flushList();
+  flushQuote();
+  flushCode();
 
   return elements;
 }
 
-export function MarkdownArticle({ content, title }: { content: string; title?: string }) {
+export function articleLanguageMeta(language?: string) {
+  const value = (language || "").trim().toLowerCase();
+  if (!value) {
+    return { isUrdu: false, isArabic: false, direction: "ltr" as const, className: "", lang: "" };
+  }
+  if (value === "ur" || value === "urdu" || value === "ur-pk") {
+    return { isUrdu: true, isArabic: false, direction: "rtl" as const, className: "ogh-urdu", lang: "ur" };
+  }
+  if (value === "ar" || value === "arabic" || value === "ar-sa" || value === "ar-eg") {
+    return { isUrdu: false, isArabic: true, direction: "rtl" as const, className: "ogh-arabic", lang: "ar" };
+  }
+  if (value === "en" || value === "english") {
+    return { isUrdu: false, isArabic: false, direction: "ltr" as const, className: "", lang: "en" };
+  }
+  return { isUrdu: false, isArabic: false, direction: "ltr" as const, className: "", lang: value };
+}
+
+export function MarkdownArticle({ content, title, language }: { content: string; title?: string; language?: string }) {
   const cleaned = title ? stripRepeatedTitleFromContent(content, title) : content;
-  return <div className="prose-article">{renderArticleBody(cleaned)}</div>;
+  const meta = articleLanguageMeta(language);
+  const scriptClass = meta.className;
+  return (
+    <div
+      className={`prose-article${scriptClass ? ` ${scriptClass}` : ""}`}
+      dir={meta.direction}
+      lang={meta.lang || undefined}
+    >
+      {renderArticleBody(cleaned)}
+    </div>
+  );
 }

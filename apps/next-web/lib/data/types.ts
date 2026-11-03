@@ -12,6 +12,12 @@ export interface Article {
 	content: string;
 	image: string;
 	category: string;
+	/** Topic slug from the Content Category tree, empty for legacy entries. */
+	topic?: string;
+	/** Language of this version, for example English, Arabic, or Urdu. */
+	language?: string;
+	/** Other language versions of the same article. */
+	translations?: { name: string; title: string; slug: string; language?: string }[];
 	tags: string[];
 	readingTime: number;
 	publishDate: string;

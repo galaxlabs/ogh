@@ -1,9 +1,10 @@
 import Link from "next/link";
-import Image from "next/image";
+import { ArticleImage } from "@/components/article-image";
 import { Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDate } from "@/lib/date";
+import { articleLanguageMeta } from "@/components/markdown-article";
 import type { Article } from "@/lib/data";
 
 interface FeaturedArticleCardProps {
@@ -17,7 +18,7 @@ export function FeaturedArticleCard({ article, large = false, locale = "en-US" }
     <Link href={`/articles/${article.slug}`} className="block h-full">
       <Card className="group h-full overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-xl">
         <div className={`relative ${large ? "aspect-[4/3]" : "aspect-video"}`}>
-          <Image
+          <ArticleImage
             src={article.image}
             alt={article.title}
             fill
@@ -45,7 +46,13 @@ export function FeaturedArticleCard({ article, large = false, locale = "en-US" }
               large ? "text-2xl md:text-3xl" : "text-xl"
             }`}
           >
-            {article.title}
+            <span
+              className={articleLanguageMeta(article.language).className || undefined}
+              dir={articleLanguageMeta(article.language).direction}
+              lang={article.language || undefined}
+            >
+              {article.title}
+            </span>
           </h3>
           <p className={`line-clamp-2 text-muted-foreground ${large ? "text-base" : "text-sm"}`}>
             {article.excerpt}

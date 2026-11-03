@@ -1,33 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import { LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export type ViewMode = "grid" | "list";
 
 const STORAGE_KEY = "ogh-view-mode";
+const CHANGE_EVENT = "ogh-view-mode-change";
+let transientMode: ViewMode | null = null;
+
+function subscribe(listener: () => void) {
+  window.addEventListener("storage", listener);
+  window.addEventListener(CHANGE_EVENT, listener);
+  return () => {
+    window.removeEventListener("storage", listener);
+    window.removeEventListener(CHANGE_EVENT, listener);
+  };
+}
 
 function readStoredMode(defaultMode: ViewMode): ViewMode {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === "grid" || stored === "list") return stored;
   } catch {
-    // ignore storage errors
+    return transientMode || defaultMode;
   }
   return defaultMode;
 }
 
 export function useViewMode(defaultMode: ViewMode = "grid"): [ViewMode, (mode: ViewMode) => void] {
-  const [mode, setMode] = useState<ViewMode>(() => readStoredMode(defaultMode));
+  const mode = useSyncExternalStore(
+    subscribe,
+    () => readStoredMode(defaultMode),
+    () => defaultMode,
+  );
 
   const setAndStore = (next: ViewMode) => {
-    setMode(next);
+    transientMode = next;
     try {
       localStorage.setItem(STORAGE_KEY, next);
     } catch {
       // ignore storage errors
     }
+    window.dispatchEvent(new Event(CHANGE_EVENT));
   };
 
   return [mode, setAndStore];

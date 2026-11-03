@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { ArticleImage } from "@/components/article-image";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Clock, Calendar } from "lucide-react";
@@ -10,7 +11,7 @@ import { AuthorBox } from "@/components/author-box";
 import { RelatedPosts } from "@/components/related-posts";
 import { Sidebar } from "@/components/sidebar";
 import { AiReader } from "@/components/ai-reader";
-import { MarkdownArticle, stripRepeatedTitleFromContent } from "@/components/markdown-article";
+import { MarkdownArticle, articleLanguageMeta, stripRepeatedTitleFromContent } from "@/components/markdown-article";
 import { useLanguage } from "@/components/language-provider";
 import { useReadability, ReadabilityToggle, readabilityClasses } from "@/components/readability-toggle";
 import { formatFullDate } from "@/lib/date";
@@ -28,11 +29,26 @@ export function ArticleDetailClient({
   const { currentLanguage, translations } = useLanguage();
   const [readability, setReadability] = useReadability();
 
+  // Count one read for the editorial statistics panel.
+  useEffect(() => {
+    if (!article.slug) return;
+    const timer = setTimeout(() => {
+      fetch("/api/cms/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: article.slug }),
+        keepalive: true,
+      }).catch(() => undefined);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [article.slug]);
+
   const locale = currentLanguage === "ur" ? "ur-PK" : currentLanguage === "ar" ? "ar-SA" : "en-US";
   const relatedArticles = allArticles
     .filter((a) => a.category === article.category && a.id !== article.id)
     .slice(0, 3);
 
+  const titleScript = articleLanguageMeta(article.language);
   const articleContent = stripRepeatedTitleFromContent(article.content, article.title);
 
   return (
@@ -48,8 +64,34 @@ export function ArticleDetailClient({
             />
 
             <div className="mb-8">
-              <Badge className="mb-4">{article.category}</Badge>
-              <h1 className="mb-6 text-4xl font-bold md:text-5xl">{article.title}</h1>
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                {article.topic && (
+                  <Link
+                    href={`/categories/${article.topic}`}
+                    className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary transition hover:bg-primary/20"
+                  >
+                    {article.topic.replace(/-/g, " ")}
+                  </Link>
+                )}
+                <Badge>{article.category}</Badge>
+                {article.language && <Badge variant="outline">{article.language}</Badge>}
+                {(article.translations || []).map((translation) => (
+                  <Link
+                    key={translation.slug}
+                    href={`/articles/${translation.slug}`}
+                    className="inline-flex items-center rounded-full border border-black/10 px-3 py-1 text-sm font-medium transition hover:border-primary hover:bg-primary/5 dark:border-white/10"
+                  >
+                    {translation.language || translation.title}
+                  </Link>
+                ))}
+              </div>
+              <h1
+          className={`mb-6 text-4xl font-bold md:text-5xl${titleScript.className ? ` ${titleScript.className}` : ""}`}
+          dir={titleScript.direction}
+          lang={titleScript.lang || undefined}
+        >
+          {article.title}
+        </h1>
 
               <div className="mb-6 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -66,7 +108,7 @@ export function ArticleDetailClient({
               </div>
             </div>
 
-            <Image
+            <ArticleImage
               src={article.image}
               alt={article.title}
               width={1200}
@@ -80,7 +122,7 @@ export function ArticleDetailClient({
             </div>
 
             <div className={`prose-article mb-12 ${readabilityClasses(readability)}`}>
-              <MarkdownArticle content={articleContent} />
+              <MarkdownArticle content={articleContent} language={article.language} />
             </div>
 
             {article.tags && article.tags.length > 0 && (

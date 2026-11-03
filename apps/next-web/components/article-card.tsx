@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { ArticleImage } from "@/components/article-image";
 import { motion } from "framer-motion";
 import { ArrowRight, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatDate } from "@/lib/date";
+import { articleLanguageMeta } from "@/components/markdown-article";
 import type { Article } from "@/lib/data";
 
 interface ArticleCardProps {
@@ -18,6 +19,10 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ article, index = 0, locale = "en-US", variant = "grid" }: ArticleCardProps) {
+  const script = articleLanguageMeta(article.language);
+  const scriptClass = script.className ? ` ${script.className}` : "";
+  const scriptDir = script.direction;
+
   if (variant === "list") {
     return (
       <motion.div
@@ -27,7 +32,7 @@ export function ArticleCard({ article, index = 0, locale = "en-US", variant = "g
       >
         <Card className="transition-all duration-200 hover:border-primary/40 hover:shadow-md">
           <Link href={`/articles/${article.slug}`} className="flex gap-4 p-4 sm:gap-5">
-            <Image
+            <ArticleImage
               src={article.image}
               alt={article.title}
               width={240}
@@ -45,10 +50,21 @@ export function ArticleCard({ article, index = 0, locale = "en-US", variant = "g
                   <span>{article.readingTime} min read</span>
                 </div>
               </div>
-              <h3 className="mb-1 line-clamp-2 text-base font-semibold transition-colors hover:text-primary sm:text-lg">
+              <h3
+                className={`mb-1 line-clamp-2 text-base font-semibold transition-colors hover:text-primary sm:text-lg${scriptClass}`}
+                dir={scriptDir}
+                lang={script.lang || undefined}
+              >
+                <span className={scriptClass.trim() || undefined} dir={scriptDir} lang={article.language || undefined}>
                 {article.title}
+              </span>
               </h3>
-              <p className="mb-1.5 line-clamp-2 text-sm text-muted-foreground">{article.excerpt}</p>
+              <p
+                className={`mb-1.5 line-clamp-2 text-sm text-muted-foreground${scriptClass}`}
+                dir={scriptDir}
+              >
+                {article.excerpt}
+              </p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span>{formatDate(article.publishDate, locale)}</span>
                 <span className="inline-flex items-center gap-1 text-primary">
@@ -72,7 +88,7 @@ export function ArticleCard({ article, index = 0, locale = "en-US", variant = "g
     >
       <Card className="flex h-full flex-col transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
         <Link href={`/articles/${article.slug}`} className="block">
-          <Image
+          <ArticleImage
             src={article.image}
             alt={article.title}
             width={800}
@@ -91,10 +107,21 @@ export function ArticleCard({ article, index = 0, locale = "en-US", variant = "g
           </div>
           <Link href={`/articles/${article.slug}`}>
             <h3 className="mb-2 line-clamp-2 text-xl font-semibold transition-colors hover:text-primary">
-              {article.title}
+              <span
+                className={script.className || undefined}
+                dir={script.direction}
+                lang={script.lang || undefined}
+              >
+                {article.title}
+              </span>
             </h3>
           </Link>
-          <p className="mb-3 line-clamp-3 flex-1 text-sm text-muted-foreground">{article.excerpt}</p>
+          <p
+            className={`mb-3 line-clamp-3 flex-1 text-sm text-muted-foreground${scriptClass}`}
+            dir={scriptDir}
+          >
+            {article.excerpt}
+          </p>
           {Array.isArray(article.tags) && article.tags.length > 0 ? (
             <div className="mb-4 flex flex-wrap gap-1">
               {article.tags.slice(0, 2).map((tag) => (

@@ -22,7 +22,6 @@ export interface PublishedArticle {
   slug: string;
   excerpt?: string;
   content_type?: string;
-  language?: string;
   featured_image?: string;
   published_at?: string;
   updated_at?: string;
@@ -30,6 +29,15 @@ export interface PublishedArticle {
   meta_description?: string;
   primary_keyword?: string;
   publication?: string;
+  language?: string;
+  translation_group?: string;
+}
+
+export interface ArticleTranslation {
+  name: string;
+  title: string;
+  slug: string;
+  language?: string;
 }
 
 export interface PublishedArticleDetail extends PublishedArticle {
@@ -37,6 +45,7 @@ export interface PublishedArticleDetail extends PublishedArticle {
   canonical_url?: string;
   value_type?: string;
   related?: PublishedArticle[];
+  translations?: ArticleTranslation[];
 }
 
 export interface CategoryNode {
@@ -53,6 +62,8 @@ export interface CategoryNode {
   featured: boolean;
   content_types: string[];
   children: CategoryNode[];
+  /** Number of published articles in this node and its children. */
+  article_count?: number;
 }
 
 const FALLBACK_API = "https://pf.digigalaxy.cloud";
@@ -149,6 +160,43 @@ export async function fetchArticleBySlug(
   const params = new URLSearchParams({ slug });
   if (publication) params.set("publication", publication);
   return getJson<PublishedArticleDetail>(`get_by_slug?${params.toString()}`);
+}
+
+export interface ContentCategoryNode {
+  slug: string;
+  name: string;
+  code: string;
+  niche: string;
+  level: number;
+  description: string;
+  icon: string;
+  subdomain: string;
+  content_types: string[];
+  featured: boolean;
+  article_count: number;
+  children: ContentCategoryNode[];
+}
+
+/** Hierarchical article category tree: main group, subgroup, and leaves. */
+export async function fetchContentCategories(niche?: string): Promise<ContentCategoryNode[] | null> {
+  const params = new URLSearchParams();
+  if (niche) params.set("niche", niche);
+  try {
+    const response = await fetch(
+      `${apiBase()}/api/method/gop.api.list_content_categories?${params.toString()}`,
+      {
+        next: { revalidate: 300 },
+        headers: { Accept: "application/json" },
+      }
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    const message = data?.message;
+    const categories = Array.isArray(message) ? message : message?.categories;
+    return Array.isArray(categories) ? categories : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchCategories(opts: {

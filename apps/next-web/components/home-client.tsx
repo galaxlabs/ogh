@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { articleLanguageMeta } from "@/components/markdown-article";
 import Image from "next/image";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -261,7 +262,13 @@ export function HomeClient({
                     {row.items.map((article) => (
                       <Link key={article.id} href={`/articles/${article.slug}`} className="group block">
                         <div className="line-clamp-2 text-sm font-medium transition-colors group-hover:text-primary">
-                          {article.title}
+                          <span
+                            className={articleLanguageMeta(article.language).className || undefined}
+                            dir={articleLanguageMeta(article.language).direction}
+                            lang={article.language || undefined}
+                          >
+                            {article.title}
+                          </span>
                         </div>
                         <div className="mt-1 text-xs text-muted-foreground">
                           {article.category} • {article.readingTime} min read

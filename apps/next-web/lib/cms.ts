@@ -1,5 +1,5 @@
 import type { CategoryNode, PublishedArticle, PublishedArticleDetail } from "@/lib/galaxy-ops-api";
-import { fetchCategories } from "@/lib/galaxy-ops-api";
+import { fetchCategories, fetchContentCategories, type ContentCategoryNode } from "@/lib/galaxy-ops-api";
 import { categories as staticCategories } from "@/lib/data";
 import { slugifyCategoryName } from "@/lib/data";
 import type { Article, CategoryStats } from "@/lib/data";
@@ -56,6 +56,37 @@ function staticCategoryNodes(opts: { code?: string } = {}): CategoryNode[] {
   return [...knownCategories, ...publicationCategories];
 }
 
+// Map the backend category tree onto the frontend node contract.
+function contentTreeToNodes(nodes: ContentCategoryNode[]): CategoryNode[] {
+  return nodes.map((node) => ({
+    name: node.name,
+    code: node.code || node.slug.toUpperCase().replace(/-/g, "_"),
+    slug: node.slug,
+    description: node.description,
+    icon: node.icon || "BookOpen",
+    publication_code: (node.niche || "").toLowerCase().replace(/\s+/g, "-") || null,
+    subdomain: node.subdomain || null,
+    hostname: node.subdomain ? `${node.subdomain}.openguidehub.org` : null,
+    is_global: node.level === 1,
+    sort_order: 100,
+    featured: node.featured,
+    content_types: node.content_types?.length ? node.content_types : ["Article"],
+    article_count: node.article_count || 0,
+    children: contentTreeToNodes(node.children || []),
+  }));
+}
+
+// The backend category endpoint is shared with the stories feature and can
+// return a different node shape (category_name, category_slug, image). Only
+// nodes that carry the article category contract are usable here.
+function isArticleCategoryNode(node: Partial<CategoryNode>) {
+  return (
+    typeof node?.code === "string" &&
+    node.code.length > 0 &&
+    Array.isArray(node?.content_types)
+  );
+}
+
 export async function loadCategoryTree(opts: { code?: string; host?: string } = {}): Promise<CategoryNode[]> {
   const fallback = staticCategoryNodes(opts);
   if (opts.code && fallback.length > 0) {
@@ -65,12 +96,36 @@ export async function loadCategoryTree(opts: { code?: string; host?: string } = 
   }
 
   try {
+    const tree = await fetchContentCategories(opts.code ? undefined : undefined);
+    if (tree && tree.length > 0) {
+      return contentTreeToNodes(tree);
+    }
+  } catch {
+    // fall through to the legacy endpoint
+  }
+
+  try {
     const api = await fetchCategories(opts);
-    if (api && api.length > 0) return api;
+    if (api && api.length > 0 && api.every((node) => isArticleCategoryNode(node))) {
+      return api;
+    }
   } catch {
     // fall through to static
   }
   return fallback;
+}
+
+// Find one node anywhere in the tree by slug.
+export function findCategoryNode(
+  nodes: CategoryNode[],
+  slug: string
+): CategoryNode | null {
+  for (const node of nodes) {
+    if (node.slug === slug) return node;
+    const found = findCategoryNode(node.children || [], slug);
+    if (found) return found;
+  }
+  return null;
 }
 
 // Flatten a tree into a list (roots + children), preserving order.
@@ -99,15 +154,16 @@ export function categoryNodeToStats(node: CategoryNode, count: number): Category
 }
 
 export function hashString(value: string): number {
+  const text = typeof value === "string" ? value : String(value ?? "");
   let hash = 0;
-  for (let i = 0; i < value.length; i++) {
-    hash = (hash << 5) - hash + value.charCodeAt(i);
-    hash |= 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash << 5) - hash + text.charCodeAt(i);
   }
+  hash |= 0;
   return Math.abs(hash);
 }
 
-const DEFAULT_ARTICLE_IMAGE = "https://images.unsplash.com/photo-1618401471353-b98afee0b2eb";
+const DEFAULT_ARTICLE_IMAGE = "/images/article-placeholder.svg";
 
 export function publishedArticleToArticle(
   article: PublishedArticle | PublishedArticleDetail
@@ -122,6 +178,9 @@ export function publishedArticleToArticle(
     content: detail.body || "",
     image: article.featured_image || DEFAULT_ARTICLE_IMAGE,
     category: article.content_type || "Guides",
+    topic: (article as { category?: string }).category || "",
+    language: article.language,
+    translations: detail.translations || [],
     tags: keyword ? [keyword] : [],
     readingTime: Math.max(1, Math.ceil((detail.body || "").split(/\s+/).filter(Boolean).length / 220)),
     publishDate: article.published_at || article.updated_at || new Date().toISOString(),

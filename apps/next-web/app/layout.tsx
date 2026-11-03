@@ -38,12 +38,21 @@ export const metadata: Metadata = {
     title: "OpenGuideHub",
     description:
       "OpenGuideHub brings organized AI, FOSS, tutorials, and multilingual explainers into one searchable knowledge hub.",
+    images: [
+      {
+        url: "https://pf.digigalaxy.cloud/files/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "OpenGuideHub - guides, tutorials, and practical knowledge",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "OpenGuideHub",
     description:
       "Organized AI, FOSS, tutorials, and multilingual explainers in one searchable knowledge hub.",
+    images: ["https://pf.digigalaxy.cloud/files/og-image.png"],
   },
   robots: {
     index: true,

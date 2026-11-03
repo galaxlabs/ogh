@@ -43,7 +43,7 @@ export const PUBLICATIONS: Record<PublicationKey, Publication> = {
     primaryHostname: "news.openguidehub.org",
     tagline: "Latest news and updates across technology and open source.",
     defaultLanguage: "en",
-    categories: ["Open Source", "Repo Reviews"],
+    categories: ["open-source", "repo-reviews", "foss-updates", "product-news"],
   },
   science: {
     key: "science",
@@ -53,7 +53,7 @@ export const PUBLICATIONS: Record<PublicationKey, Publication> = {
     primaryHostname: "science.openguidehub.org",
     tagline: "Physics, chemistry, and the world of scientific discovery.",
     defaultLanguage: "en",
-    categories: ["Physics", "Chemistry", "Biology", "Earth Science", "Space & Astronomy", "Environmental Science"],
+    categories: ["physics", "chemistry", "biology", "earth-science", "space-astronomy", "environmental-science"],
   },
   tech: {
     key: "tech",
@@ -63,7 +63,7 @@ export const PUBLICATIONS: Record<PublicationKey, Publication> = {
     primaryHostname: "tech.openguidehub.org",
     tagline: "Programming, cloud, devops, and developer tools.",
     defaultLanguage: "en",
-    categories: ["Programming", "Cloud & DevOps", "Computer Science", "Software", "Web Development", "Cybersecurity", "Data Science"],
+    categories: ["programming", "cloud-devops", "computer-science", "software", "web-development", "cybersecurity", "data-science"],
   },
   ai: {
     key: "ai",
@@ -73,7 +73,7 @@ export const PUBLICATIONS: Record<PublicationKey, Publication> = {
     primaryHostname: "ai.openguidehub.org",
     tagline: "Artificial intelligence, agents, and AI tooling.",
     defaultLanguage: "en",
-    categories: ["Artificial Intelligence", "AI Agents", "AI Tools", "Machine Learning"],
+    categories: ["artificial-intelligence", "ai-agents", "machine-learning", "ai-tools-topic"],
   },
   jobs: {
     key: "jobs",
@@ -83,7 +83,7 @@ export const PUBLICATIONS: Record<PublicationKey, Publication> = {
     primaryHostname: "jobs.openguidehub.org",
     tagline: "Career guidance and jobs in tech and beyond.",
     defaultLanguage: "en",
-    categories: [],
+    categories: ["career", "job-search", "interviews", "remote-work"],
   },
   health: {
     key: "health",
@@ -93,7 +93,7 @@ export const PUBLICATIONS: Record<PublicationKey, Publication> = {
     primaryHostname: "health.openguidehub.org",
     tagline: "Health, wellness, and medical knowledge.",
     defaultLanguage: "en",
-    categories: [],
+    categories: ["nutrition", "fitness", "mental-health", "medicine", "public-health"],
   },
   markets: {
     key: "markets",
@@ -103,7 +103,7 @@ export const PUBLICATIONS: Record<PublicationKey, Publication> = {
     primaryHostname: "markets.openguidehub.org",
     tagline: "Markets and financial intelligence.",
     defaultLanguage: "en",
-    categories: [],
+    categories: ["stocks", "crypto", "economics", "personal-finance"],
   },
   knowledge: {
     key: "knowledge",
@@ -113,7 +113,7 @@ export const PUBLICATIONS: Record<PublicationKey, Publication> = {
     primaryHostname: "knowledge.openguidehub.org",
     tagline: "Guides, tutorials, and evergreen knowledge.",
     defaultLanguage: "en",
-    categories: [],
+    categories: ["tutorials", "guides", "research-notes"],
   },
 };
 
@@ -143,7 +143,17 @@ export function filterArticlesForPublication(
   all: Article[] = articles
 ): Article[] {
   if (!pub || pub.categories.length === 0) return all;
-  return all.filter((a) => pub.categories.includes(a.category));
+  const wanted = pub.categories.map((value) => value.toLowerCase());
+  return all.filter((article) => {
+    const topic = (article.topic || "").toLowerCase();
+    const legacy = (article.category || "").toLowerCase();
+    const legacySlug = legacy.replace(/[^a-z0-9]+/g, "-");
+    return (
+      wanted.includes(topic) ||
+      wanted.includes(legacy) ||
+      wanted.includes(legacySlug)
+    );
+  });
 }
 
 export function publicationVisualTheme(pub: Publication | null): PublicationVisualTheme {

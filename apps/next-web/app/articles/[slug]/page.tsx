@@ -7,6 +7,7 @@ import { articles, categories, buildCategoryStats, type Article } from "@/lib/da
 import { publishedArticleToArticle } from "@/lib/cms";
 import { fetchArticleBySlug, fetchPublishedArticles } from "@/lib/galaxy-ops-api";
 import { getPublicationBySubdomain } from "@/lib/publications";
+import { extractFaq } from "@/lib/cms/article-template";
 
 interface ArticleDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -14,6 +15,53 @@ interface ArticleDetailPageProps {
 
 // Articles are API/CMS-driven; render dynamically rather than static export.
 export const dynamic = "force-dynamic";
+
+function siteUrl() {
+  return (process.env.NEXT_PUBLIC_SITE_URL || "https://openguidehub.org").replace(/\/+$/, "");
+}
+
+// Structured data so search engines and AI assistants can quote and rank the guide.
+function buildJsonLd(article: Article) {
+  const url = `${siteUrl()}/articles/${article.slug}`;
+  const faq = extractFaq(article.content || "");
+
+  const articleLd = {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: article.title,
+    description: article.excerpt,
+    url,
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    datePublished: article.publishDate,
+    dateModified: article.publishDate,
+    author: { "@type": "Organization", name: "OpenGuideHub", url: siteUrl() },
+    publisher: {
+      "@type": "Organization",
+      name: "OpenGuideHub",
+      url: siteUrl(),
+      logo: { "@type": "ImageObject", url: `${siteUrl()}/icon.svg` },
+    },
+    image: article.image,
+    articleSection: article.category,
+    keywords: (article.tags || []).join(", "),
+    inLanguage: "en",
+    isAccessibleForFree: true,
+  };
+
+  const faqLd = faq.length
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faq.map((item) => ({
+          "@type": "Question",
+          name: item.question,
+          acceptedAnswer: { "@type": "Answer", text: item.answer },
+        })),
+      }
+    : null;
+
+  return [articleLd, faqLd].filter(Boolean);
+}
 
 async function loadArticle(slug: string) {
   const headerStore = await headers();
@@ -110,6 +158,13 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
 
   return (
     <SiteShell>
+      {buildJsonLd(article).map((data, index) => (
+        <script
+          key={`jsonld-${index}`}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+        />
+      ))}
       <ArticleDetailClient
         article={article}
         allArticles={allArticles}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title">
+  <title id="title">OpenGuideHub article placeholder illustration</title>
+  <rect width="1200" height="630" fill="#f7f8fa"/>
+  <circle cx="600" cy="315" r="205" fill="#e0f0f0"/>
+  <path d="M390 216c82-24 153-13 210 28 57-41 128-52 210-28v203c-82-25-153-13-210 28-57-41-128-53-210-28z" fill="#fff" stroke="#14263d" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M600 244v203M426 264c54-12 103-6 145 16M426 307c54-12 103-6 145 16M629 280c42-22 91-28 145-16M629 323c42-22 91-28 145-16" fill="none" stroke="#087e8b" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="856" cy="166" r="18" fill="#b86608"/>
+  <circle cx="330" cy="465" r="12" fill="#6546a5"/>
+</svg>

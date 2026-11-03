@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { usePublication } from "@/components/publication-provider";
-import { PUBLICATIONS } from "@/lib/publications";
 import { Facebook, Github, Linkedin, Mail, Twitter } from "lucide-react";
 
 const socialLinks = [
@@ -14,33 +14,83 @@ const socialLinks = [
   { icon: Mail, href: "#", label: "Email" },
 ];
 
+interface GroupLink {
+  name: string;
+  slug: string;
+  subdomain: string;
+  description: string;
+  articleCount: number;
+  children: { name: string; slug: string; articleCount: number }[];
+}
+
 export function Footer() {
   const { translations } = useLanguage();
   const { publication } = usePublication();
   const t = translations || {};
   const nav = t.nav || {};
   const footer = t.footer || {};
+  const [groups, setGroups] = useState<GroupLink[]>([]);
 
-  const publicationLinks = Object.values(PUBLICATIONS)
-    .filter((item) => item.categories.length > 0)
-    .map((item) => ({
-      label: item.name.replace("OpenGuideHub ", ""),
-      path: `https://${item.subdomain}.openguidehub.org/`,
-      description: item.tagline,
-    }));
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/cms/categories", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data) => {
+        if (cancelled) return;
+        const roots = (data?.categories || []) as {
+          name: string;
+          slug: string;
+          subdomain: string;
+          description: string;
+          article_count: number;
+          children: { name: string; slug: string; article_count: number }[];
+        }[];
+        setGroups(
+          roots.map((root) => ({
+            name: root.name,
+            slug: root.slug,
+            subdomain: root.subdomain,
+            description: root.description,
+            articleCount: root.article_count || 0,
+            children: (root.children || []).map((child) => ({
+              name: child.name,
+              slug: child.slug,
+              articleCount: child.article_count || 0,
+            })),
+          }))
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const groupLinks = groups.length
+    ? groups
+    : [
+        { name: "Science", slug: "science", subdomain: "science", description: "", articleCount: 0, children: [] },
+        { name: "Technology", slug: "technology", subdomain: "tech", description: "", articleCount: 0, children: [] },
+        { name: "AI Tools", slug: "ai-tools", subdomain: "ai", description: "", articleCount: 0, children: [] },
+        { name: "Health", slug: "health", subdomain: "health", description: "", articleCount: 0, children: [] },
+      ];
 
   const footerLinks = {
     categories: publication
-      ? publication.categories.map((category) => ({
-          label: category,
-          path: `/articles?category=${encodeURIComponent(category.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""))}`,
-        }))
-      : [
-          { label: nav.science || "Science", path: "https://science.openguidehub.org/" },
-          { label: nav.technology || "Technology", path: "https://tech.openguidehub.org/" },
-          { label: "AI", path: "https://ai.openguidehub.org/" },
-          { label: "News", path: "https://news.openguidehub.org/" },
-        ],
+      ? groupLinks
+          .filter((group) => group.subdomain === publication.subdomain)
+          .flatMap((group) =>
+            group.children.map((child) => ({
+              label: child.name,
+              path: `/categories/${child.slug}`,
+            }))
+          )
+      : groupLinks.map((group) => ({
+          label: group.name,
+          path: group.subdomain
+            ? `https://${group.subdomain}.openguidehub.org/`
+            : `/categories/${group.slug}`,
+        })),
     resources: [
       { label: nav.articles || "Articles", path: "/articles" },
       ...(!publication ? [{ label: nav.downloads || "Downloads", path: "/downloads" }] : []),
@@ -83,9 +133,21 @@ export function Footer() {
               <ul className="space-y-2">
                 {section.links.map((link) => (
                   <li key={link.path}>
-                    <Link href={link.path} className="text-sm transition-colors hover:text-foreground">
-                      {link.label}
-                    </Link>
+                    {link.path.startsWith("http") ? (
+                      <a
+                        href={link.path}
+                        className="text-sm transition-colors hover:text-foreground"
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link
+                        href={link.path}
+                        className="text-sm transition-colors hover:text-foreground"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -96,17 +158,43 @@ export function Footer() {
         <div className="mb-8 rounded-2xl border bg-background/70 p-5">
           <h3 className="mb-3 font-semibold">OpenGuideHub Publication Network</h3>
           <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
-            Explore related OpenGuideHub publications. These cross-links connect each topic site into one blogging network.
+            Every main group lives on its own subdomain, and each one links back into the others.
+            Pick a group to browse it, then move sideways through the related topics.
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {publicationLinks.map((link) => (
+            {groupLinks.map((group) => (
               <a
-                key={link.path}
-                href={link.path}
+                key={group.slug}
+                href={
+                  group.subdomain
+                    ? `https://${group.subdomain}.openguidehub.org/`
+                    : `/categories/${group.slug}`
+                }
                 className="rounded-xl border bg-muted/30 p-3 transition-colors hover:border-primary hover:bg-primary/10"
               >
-                <div className="font-medium">{link.label}</div>
-                <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{link.description}</div>
+                <div className="flex items-center justify-between gap-2 font-medium">
+                  {group.name}
+                  <span className="text-xs text-muted-foreground">
+                    {group.articleCount}
+                  </span>
+                </div>
+                {group.description && (
+                  <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                    {group.description}
+                  </div>
+                )}
+                {group.children.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {group.children.slice(0, 4).map((child) => (
+                      <span
+                        key={child.slug}
+                        className="rounded-full bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground"
+                      >
+                        {child.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </a>
             ))}
           </div>

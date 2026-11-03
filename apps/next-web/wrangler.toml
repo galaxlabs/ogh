@@ -16,13 +16,53 @@ not_found_handling = "none"
 NEXT_PUBLIC_SITE_URL = "https://openguidehub.org"
 NEXT_PUBLIC_ADMIN_API_URL = "https://pf.digigalaxy.cloud"
 
+# AI providers for the content agent. Secrets are not stored here, add them with:
+#   npx wrangler secret put OPENAI_API_KEY
+#   npx wrangler secret put AI_API_KEY
+#   npx wrangler secret put CLOUDFLARE_AI_TOKEN
+AI_PROVIDER = "openai"
+AI_MODEL = "qwen2.5:7b"
+OPENAI_BASE_URL = "https://api.openai.com/v1"
+OPENAI_MODEL = "gpt-4o-mini"
+CLOUDFLARE_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct"
+
 # Routes — wildcard catches all publication subdomains; apex for the root
 [[routes]]
 pattern = "openguidehub.org/*"
 zone_name = "openguidehub.org"
 
+# Explicit publication subdomains. The wildcard was removed so other apps
+# (for example books.openguidehub.org) can own their own subdomains.
 [[routes]]
-pattern = "*.openguidehub.org/*"
+pattern = "science.openguidehub.org/*"
+zone_name = "openguidehub.org"
+
+[[routes]]
+pattern = "tech.openguidehub.org/*"
+zone_name = "openguidehub.org"
+
+[[routes]]
+pattern = "ai.openguidehub.org/*"
+zone_name = "openguidehub.org"
+
+[[routes]]
+pattern = "news.openguidehub.org/*"
+zone_name = "openguidehub.org"
+
+[[routes]]
+pattern = "health.openguidehub.org/*"
+zone_name = "openguidehub.org"
+
+[[routes]]
+pattern = "jobs.openguidehub.org/*"
+zone_name = "openguidehub.org"
+
+[[routes]]
+pattern = "knowledge.openguidehub.org/*"
+zone_name = "openguidehub.org"
+
+[[routes]]
+pattern = "markets.openguidehub.org/*"
 zone_name = "openguidehub.org"
 
 # Workers preview URL (temporary, until DNS is set)

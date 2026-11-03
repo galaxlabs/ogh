@@ -219,3 +219,42 @@
     @apply bg-yellow-500/30;
   }
 }
+
+/* ---------------- script aware article typography ---------------- */
+
+/* Urdu articles use the Nastaliq script, with the extra leading it needs */
+.ogh-urdu {
+  font-family: var(--font-noto-nastaliq), var(--font-noto-naskh), serif;
+  line-height: 2.1;
+  letter-spacing: 0;
+}
+.ogh-urdu h1,
+.ogh-urdu h2,
+.ogh-urdu h3,
+.ogh-urdu h4 {
+  font-family: var(--font-noto-nastaliq), var(--font-noto-naskh), serif;
+  line-height: 1.9;
+}
+.ogh-urdu p,
+.ogh-urdu li,
+.ogh-urdu blockquote {
+  line-height: 2.15;
+}
+.ogh-urdu code,
+.ogh-urdu pre {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  direction: ltr;
+  text-align: left;
+}
+
+/* Arabic articles use the Naskh body face */
+.ogh-arabic {
+  font-family: var(--font-noto-naskh), var(--font-ubuntu), sans-serif;
+  line-height: 2;
+}
+.ogh-arabic code,
+.ogh-arabic pre {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  direction: ltr;
+  text-align: left;
+}
