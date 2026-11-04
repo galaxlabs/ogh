@@ -1,18 +1,16 @@
 import type { MetadataRoute } from "next";
 import { SITE } from "@/lib/site";
-import { articles, categories } from "@/lib/data";
+import { fetchPublishedArticles } from "@/lib/galaxy-ops-api";
+import { publishedArticleToArticle } from "@/lib/cms";
+import { isSitemapIndexable } from "@/lib/sitemap-indexability";
+
+// Generate from current CMS data rather than freezing the list at build time.
+export const dynamic = "force-dynamic";
 
 const STATIC_ROUTES = [
   "",
   "/articles",
   "/categories",
-  "/tutorials",
-  "/reviews",
-  "/science",
-  "/technology",
-  "/open-source",
-  "/downloads",
-  "/roadmap.sh",
   "/about",
   "/contact",
   "/privacy",
@@ -20,7 +18,7 @@ const STATIC_ROUTES = [
   "/disclaimer",
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
   const staticEntries = STATIC_ROUTES.map((route) => ({
@@ -30,19 +28,31 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: route === "" ? 1 : 0.7,
   }));
 
-  const articleEntries = articles.map((article) => ({
-    url: `${SITE.url}/articles/${article.slug}`,
-    lastModified: article.publishDate ? new Date(article.publishDate) : now,
-    changeFrequency: "monthly" as const,
-    priority: 0.8,
-  }));
+  // Only published CMS articles; static seed data omitted.
+  let articleEntries: MetadataRoute.Sitemap[number][] = [];
+  try {
+    const firstPage = await fetchPublishedArticles({ page: 1 });
+    if (!firstPage) throw new Error("Published articles unavailable");
+    const items = [...firstPage.items];
+    for (let page = 2; items.length < firstPage.total; page += 1) {
+      const response = await fetchPublishedArticles({ page });
+      if (!response || response.items.length === 0) {
+        throw new Error("Published article pagination incomplete");
+      }
+      items.push(...response.items);
+    }
+    // Include only articles whose indexability was explicitly supplied by the CMS.
+    const indexable = items.filter(isSitemapIndexable);
+    const uniqueArticles = [...new Map(indexable.map((item) => [item.slug, item])).values()];
+    articleEntries = uniqueArticles.map(publishedArticleToArticle).map((article) => ({
+      url: `${SITE.url}/articles/${article.slug}`,
+      lastModified: article.publishDate ? new Date(article.publishDate) : now,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    }));
+  } catch {
+    // Keep static entries on error.
+  }
 
-  const categoryEntries = categories.map((category) => ({
-    url: `${SITE.url}/categories#${category.slug}`,
-    lastModified: now,
-    changeFrequency: "weekly" as const,
-    priority: 0.6,
-  }));
-
-  return [...staticEntries, ...articleEntries, ...categoryEntries];
+  return [...staticEntries, ...articleEntries];
 }

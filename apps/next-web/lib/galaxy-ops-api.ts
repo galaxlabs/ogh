@@ -23,6 +23,7 @@ export interface PublishedArticle {
   excerpt?: string;
   content_type?: string;
   featured_image?: string;
+  noindex?: number;
   published_at?: string;
   updated_at?: string;
   seo_title?: string;
@@ -145,7 +146,8 @@ export async function fetchPublishedArticles(opts: {
 }): Promise<{ items: PublishedArticle[]; total: number; page: number } | null> {
   const params = new URLSearchParams({
     page: String(opts.page || 1),
-    page_size: "50",
+    // Use a fresh cache key for the public response containing `noindex`.
+    page_size: "49",
   });
   if (opts.publication) params.set("publication", opts.publication);
   if (opts.language) params.set("language", opts.language);

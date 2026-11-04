@@ -101,6 +101,9 @@ export async function generateMetadata({
   params,
 }: ArticleDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
+  const headerStore = await headers();
+  const publication = getPublicationBySubdomain(headerStore.get("x-ogh-publication"));
+  const cmsArticle = await fetchArticleBySlug(slug, publication?.code);
   const article = await loadArticle(slug);
 
   if (!article) return {};
@@ -111,6 +114,7 @@ export async function generateMetadata({
   return {
     title: article.title,
     description: article.excerpt,
+    ...(cmsArticle?.noindex === 1 ? { robots: { index: false } } : {}),
     keywords: seoKeywords,
     alternates: { canonical: articleUrl },
     openGraph: {
