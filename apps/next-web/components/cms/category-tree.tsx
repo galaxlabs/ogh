@@ -3,12 +3,11 @@ import { ArrowUpRight, FolderTree } from "lucide-react";
 import type { CategoryNode } from "@/lib/cms";
 
 function groupHref(node: CategoryNode) {
-  return node.subdomain ? `https://${node.subdomain}.openguidehub.org/` : "/categories";
+  return `/categories/${node.slug}`;
 }
 
 export function CategoryTree({
   groups,
-  currentSubdomain,
 }: {
   groups: CategoryNode[];
   currentSubdomain?: string | null;
@@ -16,9 +15,6 @@ export function CategoryTree({
   return (
     <div className="space-y-10">
       {groups.map((group) => {
-        const external = Boolean(
-          group.subdomain && group.subdomain !== currentSubdomain
-        );
         return (
           <section key={group.slug} className="scroll-mt-24">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-black/10 pb-3 dark:border-white/10">
@@ -35,7 +31,7 @@ export function CategoryTree({
                 href={groupHref(group)}
                 className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
               >
-                {external ? group.subdomain : "Browse"} <ArrowUpRight className="size-4" />
+                Browse <ArrowUpRight className="size-4" />
               </a>
             </div>
 

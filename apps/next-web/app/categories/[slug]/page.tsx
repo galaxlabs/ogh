@@ -7,9 +7,11 @@ import { SiteShell } from "@/components/site-shell";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ArticleCard } from "@/components/article-card";
 import { findCategoryNode, flattenCategoryTree, loadCategoryTree } from "@/lib/cms";
-import { fetchPublishedArticles } from "@/lib/galaxy-ops-api";
+import { fetchAllPublishedArticles } from "@/lib/galaxy-ops-api";
 import { publishedArticleToArticle } from "@/lib/cms";
 import { getPublicationBySubdomain, publicationVisualTheme } from "@/lib/publications";
+import { filterArticlesForPublication } from "@/lib/publications";
+import { slugifyCategoryName } from "@/lib/data";
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -45,17 +47,15 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   if (!node) notFound();
 
   const flat = flattenCategoryTree(tree);
-  const parent = node.slug ? flat.find((item) => item.slug === node.slug) : undefined;
+  const parent = flat.find((item) => item.children.some((child) => child.slug === node.slug));
 
   // Articles filed under this category or any of its children.
-  const childSlugs = new Set([node.slug, ...(node.children || []).map((c) => c.slug)]);
-  const response = await fetchPublishedArticles({});
-  const articles = (response?.items || [])
-    .map(publishedArticleToArticle)
-    .filter((article) => {
-      const topic = (article as { topic?: string }).topic;
-      return topic ? childSlugs.has(topic) : false;
-    });
+  const childSlugs = new Set(flattenCategoryTree([node]).map((item) => item.slug));
+  const response = await fetchAllPublishedArticles({ publication: publication?.code });
+  const cmsArticles = (response || []).map(publishedArticleToArticle);
+  const cmsSlugs = new Set(cmsArticles.map((article) => article.slug));
+  const articles = [...cmsArticles, ...filterArticlesForPublication(publication).filter((article) => !cmsSlugs.has(article.slug))]
+    .filter((article) => childSlugs.has(article.topic || slugifyCategoryName(article.category)));
 
   // Cross links: siblings inside the same group, plus groups with content.
   const siblings = (parent?.children || []).filter((item) => item.slug !== node.slug);
@@ -140,13 +140,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           {articles.length ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {articles.map((article, index) => (
-                <Link
-                  key={article.id}
-                  href={`/articles/${article.slug}`}
-                  className="block"
-                >
-                  <ArticleCard article={article} index={index} />
-                </Link>
+                <ArticleCard key={article.id} article={article} index={index} />
               ))}
             </div>
           ) : (

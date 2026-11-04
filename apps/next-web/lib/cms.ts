@@ -176,9 +176,11 @@ export function publishedArticleToArticle(
     title: article.title,
     excerpt: article.excerpt || article.meta_description || "OpenGuideHub article",
     content: detail.body || "",
-    image: article.featured_image || DEFAULT_ARTICLE_IMAGE,
+    image: article.featured_image?.startsWith("/files/")
+      ? `${(process.env.NEXT_PUBLIC_ADMIN_API_URL || "https://pf.digigalaxy.cloud").replace(/\/+$/, "")}${article.featured_image}`
+      : article.featured_image || DEFAULT_ARTICLE_IMAGE,
     category: article.content_type || "Guides",
-    topic: (article as { category?: string }).category || "",
+    topic: article.category || "",
     language: article.language,
     translations: detail.translations || [],
     tags: keyword ? [keyword] : [],

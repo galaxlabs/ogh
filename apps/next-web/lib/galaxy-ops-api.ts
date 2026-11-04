@@ -23,6 +23,7 @@ export interface PublishedArticle {
   excerpt?: string;
   content_type?: string;
   featured_image?: string;
+  category?: string;
   noindex?: number;
   published_at?: string;
   updated_at?: string;
@@ -153,6 +154,19 @@ export async function fetchPublishedArticles(opts: {
   if (opts.language) params.set("language", opts.language);
   if (opts.category) params.set("category", opts.category);
   return getJson(`list_published?${params.toString()}`);
+}
+
+/** Load every page for views that filter or paginate the complete catalogue. */
+export async function fetchAllPublishedArticles(opts: { publication?: string } = {}): Promise<PublishedArticle[] | null> {
+  const first = await fetchPublishedArticles({ ...opts, page: 1 });
+  if (!first) return null;
+  const items = [...first.items];
+  for (let page = 2; items.length < first.total; page++) {
+    const next = await fetchPublishedArticles({ ...opts, page });
+    if (!next || !next.items.length) return null;
+    items.push(...next.items);
+  }
+  return [...new Map(items.map((item) => [item.slug, item])).values()];
 }
 
 export async function fetchArticleBySlug(

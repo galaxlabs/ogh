@@ -7,8 +7,8 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { CategoryLinkNetwork } from "@/components/category-link-network";
 import { categories, buildCategoryStats } from "@/lib/data";
 import { getPublicationBySubdomain, filterArticlesForPublication } from "@/lib/publications";
-import { publishedArticleToArticle } from "@/lib/cms";
-import { fetchPublishedArticles } from "@/lib/galaxy-ops-api";
+import { publishedArticleToArticle, loadCategoryTree, flattenCategoryTree, categoryNodeToStats } from "@/lib/cms";
+import { fetchAllPublishedArticles } from "@/lib/galaxy-ops-api";
 
 export const metadata: Metadata = {
   title: "Articles",
@@ -20,14 +20,18 @@ export default async function ArticlesPage() {
   const headerStore = await headers();
   const publication = getPublicationBySubdomain(headerStore.get("x-ogh-publication"));
   const fallbackArticles = filterArticlesForPublication(publication);
-  const response = await fetchPublishedArticles({ publication: publication?.code });
-  const cmsArticles = (response?.items || []).map(publishedArticleToArticle);
+  const [response, tree] = await Promise.all([
+    fetchAllPublishedArticles({ publication: publication?.code }),
+    loadCategoryTree({}),
+  ]);
+  const cmsArticles = (response || []).map(publishedArticleToArticle);
   const cmsSlugs = new Set(cmsArticles.map((article) => article.slug));
   const scopedArticles = [
     ...cmsArticles,
     ...fallbackArticles.filter((article) => !cmsSlugs.has(article.slug)),
   ];
-  const categoryStats = buildCategoryStats(categories, scopedArticles);
+  const liveStats = flattenCategoryTree(tree).map((node) => categoryNodeToStats(node, node.article_count || 0));
+  const categoryStats = liveStats.length ? liveStats : buildCategoryStats(categories, scopedArticles);
 
   return (
     <SiteShell>
@@ -57,7 +61,7 @@ export default async function ArticlesPage() {
             </div>
           }
         >
-          <ArticlesExplorer articles={scopedArticles} categoryStats={categoryStats} />
+          <ArticlesExplorer articles={scopedArticles} categoryStats={categoryStats} categoryTree={tree} />
         </Suspense>
 
         {publication && <CategoryLinkNetwork />}

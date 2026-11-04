@@ -47,7 +47,7 @@ export function Sidebar({ popularPosts = [], categories = [] }: SidebarProps) {
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {categories.slice(0, 10).map((category) => (
-              <Link key={category.slug} href={`/categories#${category.slug}`}>
+              <Link key={category.slug} href={`/categories/${category.slug}`}>
                 <Badge
                   variant="secondary"
                   className="transition-colors hover:bg-primary hover:text-primary-foreground"

@@ -9,6 +9,10 @@ import { Sidebar } from "@/components/sidebar";
 import { useLanguage } from "@/components/language-provider";
 import { useViewMode, ViewModeToggle } from "@/components/view-mode-toggle";
 import type { Article, CategoryStats } from "@/lib/data";
+import type { CategoryNode } from "@/lib/galaxy-ops-api";
+import { findCategoryNode, flattenCategoryTree } from "@/lib/cms";
+
+const PAGE_SIZE = 12;
 
 function slugifyCategoryName(value: string) {
   return String(value || "")
@@ -20,9 +24,11 @@ function slugifyCategoryName(value: string) {
 export function ArticlesExplorer({
   articles,
   categoryStats,
+  categoryTree,
 }: {
   articles: Article[];
   categoryStats: CategoryStats[];
+  categoryTree: CategoryNode[];
 }) {
   const searchParams = useSearchParams();
   const { translations } = useLanguage();
@@ -33,6 +39,12 @@ export function ArticlesExplorer({
     searchParams.get("category") || "all"
   );
   const [viewMode, setViewMode] = useViewMode("grid");
+  const [page, setPage] = useState(1);
+
+  const matchingTopics = useMemo(() => {
+    const node = findCategoryNode(categoryTree, selectedCategory);
+    return node ? new Set(flattenCategoryTree([node]).map((item) => item.slug)) : new Set([selectedCategory]);
+  }, [categoryTree, selectedCategory]);
 
   const filteredArticles = useMemo(() => {
     return articles.filter((article) => {
@@ -41,10 +53,10 @@ export function ArticlesExplorer({
         article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory =
         selectedCategory === "all" ||
-        slugifyCategoryName(article.category) === selectedCategory;
+        matchingTopics.has(article.topic || slugifyCategoryName(article.category));
       return matchesSearch && matchesCategory;
     });
-  }, [articles, searchQuery, selectedCategory]);
+  }, [articles, searchQuery, selectedCategory, matchingTopics]);
 
   const sortedArticles = useMemo(
     () =>
@@ -54,6 +66,9 @@ export function ArticlesExplorer({
       ),
     [filteredArticles]
   );
+  const totalPages = Math.max(1, Math.ceil(sortedArticles.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const visibleArticles = sortedArticles.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="grid gap-12 lg:grid-cols-3">
@@ -63,17 +78,17 @@ export function ArticlesExplorer({
             <div className="flex-1">
               <SearchBar
                 value={searchQuery}
-                onChange={setSearchQuery}
+                onChange={(value) => { setSearchQuery(value); setPage(1); }}
                 placeholder={common.search}
-                onSearch={(q) => setSearchQuery(q)}
+                onSearch={(q) => { setSearchQuery(q); setPage(1); }}
               />
             </div>
             <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           </div>
           <CategoryFilter
-            categories={categoryStats.slice(0, 12)}
+            categories={categoryStats.filter((category) => category.count > 0).slice(0, 12)}
             selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
+            onCategoryChange={(value) => { setSelectedCategory(value); setPage(1); }}
             allLabel={common.all || "All"}
           />
         </div>
@@ -87,21 +102,29 @@ export function ArticlesExplorer({
         ) : (
           <>
             <div className="text-sm text-muted-foreground">
-              Showing {sortedArticles.length}{" "}
-              {sortedArticles.length === 1 ? "article" : "articles"}
+              Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sortedArticles.length)} of {sortedArticles.length} articles
             </div>
             {viewMode === "grid" ? (
               <div className="grid gap-6 sm:grid-cols-2">
-                {sortedArticles.map((article, index) => (
+                {visibleArticles.map((article, index) => (
                   <ArticleCard key={article.id} article={article} index={index} />
                 ))}
               </div>
             ) : (
               <div className="space-y-4">
-                {sortedArticles.map((article, index) => (
+                {visibleArticles.map((article, index) => (
                   <ArticleCard key={article.id} article={article} index={index} variant="list" />
                 ))}
               </div>
+            )}
+            {totalPages > 1 && (
+              <nav aria-label="Article pages" className="flex flex-wrap items-center gap-2">
+                <button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="rounded-md border px-3 py-2 text-sm disabled:opacity-40">Previous</button>
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((number) => (
+                  <button key={number} type="button" aria-current={number === currentPage ? "page" : undefined} onClick={() => setPage(number)} className={`rounded-md border px-3 py-2 text-sm ${number === currentPage ? "bg-primary text-primary-foreground" : ""}`}>{number}</button>
+                ))}
+                <button type="button" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)} className="rounded-md border px-3 py-2 text-sm disabled:opacity-40">Next</button>
+              </nav>
             )}
           </>
         )}
