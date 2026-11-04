@@ -138,7 +138,7 @@ Watching repositories helps you:
 Click the "Watch" button on GitHub repositories to receive notifications about updates. Start with a few repositories related to your current interests, then expand as you discover new areas.
 
 Remember, quality over quantity. It is better to actively follow a few repositories than to be overwhelmed by notifications from dozens.`,
-    image: 'https://images.unsplash.com/photo-1618401471353-b98afee0b2eb',
+    image: '/images/original-covers/top-github-repositories-developers-should-watch.png',
     category: 'Repo Reviews',
     tags: ['GitHub', 'Open Source', 'Development', 'Learning'],
     readingTime: 7,
@@ -235,7 +235,7 @@ Cybersecurity offers diverse specializations:
 Cybersecurity evolves rapidly. Follow security news, join communities, and never stop learning. The key is consistent practice and staying curious about how systems can be exploited and protected.
 
 Start with the basics, build hands-on skills, and gradually work toward specialization. The journey requires dedication, but the rewards are substantial.`,
-    image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b',
+    image: '/images/original-covers/how-to-start-learning-cybersecurity.png',
     category: 'Cybersecurity',
     tags: ['Cybersecurity', 'Security', 'Learning', 'Career'],
     readingTime: 12,
@@ -306,7 +306,7 @@ To dive deeper into quantum physics:
 - Study the historical development of quantum theory
 
 Quantum physics may seem intimidating, but approaching it with curiosity rather than fear of complexity makes it accessible and fascinating.`,
-    image: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb',
+    image: '/images/original-covers/understanding-quantum-physics-simple-words.png',
     category: 'Physics',
     tags: ['Physics', 'Quantum Mechanics', 'Science', 'Education'],
     readingTime: 11,
@@ -406,7 +406,7 @@ Do not try to learn everything at once. Start with one or two tools that address
 The Linux community offers extensive documentation and support. Most tools have excellent man pages and online resources to help you learn.
 
 Remember, the goal is productivity, not complexity. Use tools that genuinely improve your workflow, not just because they are popular.`,
-    image: 'https://images.unsplash.com/photo-1629654297299-c8506221ca97',
+    image: '/images/original-covers/best-linux-tools-productivity.png',
     category: 'Cloud & DevOps',
     tags: ['Linux', 'DevOps', 'Tools', 'Productivity'],
     readingTime: 9,
@@ -530,7 +530,7 @@ Here is the secret: you do not have to choose just one. Many developers know bot
 If you are completely unsure, start with Python. Its simplicity makes it an excellent first language. Once you understand programming fundamentals, picking up JavaScript becomes much easier.
 
 Remember, programming concepts transfer between languages. The skills you develop with one language make learning others significantly easier.`,
-    image: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4',
+    image: '/images/original-covers/python-vs-javascript-beginner-comparison.png',
     category: 'Programming',
     tags: ['Python', 'JavaScript', 'Programming', 'Beginner'],
     readingTime: 10,
@@ -669,7 +669,7 @@ Always prioritize safety when working with chemicals:
 - Know emergency procedures
 
 Chemistry opens doors to understanding how the world works at a molecular level. Start with these fundamentals and build your knowledge gradually. The more you learn, the more fascinating chemistry becomes.`,
-    image: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69',
+    image: '/images/original-covers/intro-to-chemistry-for-students.png',
     category: 'Chemistry',
     tags: ['Chemistry', 'Science', 'Education', 'Student'],
     readingTime: 11,
@@ -796,7 +796,7 @@ AI ٹیکنالوجی تیزی سے ترقی کر رہی ہے:
 AI ایک طاقتور ٹیکنالوجی ہے جو ہماری زندگی کو بہتر بنا سکتی ہے۔ اس کی بنیادی باتیں سمجھنا ضروری ہے تاکہ ہم اس ٹیکنالوجی کا بہتر استعمال کر سکیں۔
 
 AI کا مستقبل روشن ہے، اور یہ ہماری زندگی کا ایک اہم حصہ بن رہی ہے۔ اس لیے اس کے بارے میں سیکھنا اور سمجھنا آج کے دور میں بہت اہم ہے۔`,
-    image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995',
+    image: '/images/original-covers/urdu-guide-artificial-intelligence-kya-hai.png',
     category: 'Artificial Intelligence',
     tags: ['Urdu', 'AI', 'اردو', 'مصنوعی ذہانت'],
     readingTime: 9,
@@ -978,7 +978,7 @@ AI کا مستقبل روشن ہے، اور یہ ہماری زندگی کا ای
 البرمجيات مفتوحة المصدر تمثل حركة عالمية للتعاون والمشاركة. بدايتك يمكن أن تكون بسيطة - استخدم برنامج مفتوح المصدر اليوم، وعندما تكون جاهزاً، ساهم في تحسينه.
 
 المصدر المفتوح ليس فقط عن البرمجة - إنه عن بناء مستقبل أفضل للتكنولوجيا معاً.`,
-    image: 'https://images.unsplash.com/photo-1618401471353-b98afee0b2eb',
+    image: '/images/original-covers/arabic-guide-introduction-open-source-software.png',
     category: 'Open Source',
     tags: ['Arabic', 'Open Source', 'عربي', 'المصدر المفتوح'],
     readingTime: 10,

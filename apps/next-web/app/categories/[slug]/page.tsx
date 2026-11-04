@@ -10,8 +10,6 @@ import { findCategoryNode, flattenCategoryTree, loadCategoryTree } from "@/lib/c
 import { fetchAllPublishedArticles } from "@/lib/galaxy-ops-api";
 import { publishedArticleToArticle } from "@/lib/cms";
 import { getPublicationBySubdomain, publicationVisualTheme } from "@/lib/publications";
-import { filterArticlesForPublication } from "@/lib/publications";
-import { slugifyCategoryName } from "@/lib/data";
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -53,9 +51,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const childSlugs = new Set(flattenCategoryTree([node]).map((item) => item.slug));
   const response = await fetchAllPublishedArticles({ publication: publication?.code });
   const cmsArticles = (response || []).map(publishedArticleToArticle);
-  const cmsSlugs = new Set(cmsArticles.map((article) => article.slug));
-  const articles = [...cmsArticles, ...filterArticlesForPublication(publication).filter((article) => !cmsSlugs.has(article.slug))]
-    .filter((article) => childSlugs.has(article.topic || slugifyCategoryName(article.category)));
+  const articles = cmsArticles.filter((article) => article.topic && childSlugs.has(article.topic));
 
   // Cross links: siblings inside the same group, plus groups with content.
   const siblings = (parent?.children || []).filter((item) => item.slug !== node.slug);

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { SiteShell } from "@/components/site-shell";
 import { TopicExplorer, TopicPageShell } from "@/components/topic-explorer";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { articles } from "@/lib/data";
+import { loadArticlesByTopics } from "@/lib/cms";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Technology",
@@ -10,24 +12,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/technology" },
 };
 
-export default function TechnologyPage() {
-  const technologyArticles = articles.filter((article) =>
-    [
-      "Artificial Intelligence",
-      "Computer Science",
-      "Programming",
-      "Software",
-      "Cybersecurity",
-      "Data Science",
-      "Cloud & DevOps",
-      "Web Development",
-      "Mobile Development",
-      "Gadgets",
-      "Robotics",
-      "Electronics",
-      "Internet",
-    ].includes(article.category)
-  );
+export default async function TechnologyPage() {
+  const technologyArticles = await loadArticlesByTopics(["technology", "artificial-intelligence"]);
 
   return (
     <SiteShell>

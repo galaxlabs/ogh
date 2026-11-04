@@ -1,9 +1,10 @@
 import type { CategoryNode, PublishedArticle, PublishedArticleDetail } from "@/lib/galaxy-ops-api";
-import { fetchCategories, fetchContentCategories, type ContentCategoryNode } from "@/lib/galaxy-ops-api";
+import { fetchAllPublishedArticles, fetchCategories, fetchContentCategories, type ContentCategoryNode } from "@/lib/galaxy-ops-api";
 import { categories as staticCategories } from "@/lib/data";
 import { slugifyCategoryName } from "@/lib/data";
 import type { Article, CategoryStats } from "@/lib/data";
 import { PUBLICATIONS } from "@/lib/publications";
+import { cmsMediaUrl } from "@/lib/cms/media-url";
 
 export type { CategoryNode };
 
@@ -141,6 +142,17 @@ export function flattenCategoryTree(nodes: CategoryNode[]): CategoryNode[] {
   return flat;
 }
 
+/** Published CMS articles whose topic is within any requested category subtree. */
+export async function loadArticlesByTopics(slugs: string[]): Promise<Article[]> {
+  const [items, tree] = await Promise.all([fetchAllPublishedArticles(), loadCategoryTree()]);
+  const allowed = new Set(slugs);
+  for (const slug of slugs) {
+    const node = findCategoryNode(tree, slug);
+    if (node) for (const child of flattenCategoryTree([node])) allowed.add(child.slug);
+  }
+  return (items || []).filter((article) => article.category && allowed.has(article.category)).map(publishedArticleToArticle);
+}
+
 // Convert a CMS node into the CategoryStats shape used by the frontend cards.
 export function categoryNodeToStats(node: CategoryNode, count: number): CategoryStats {
   return {
@@ -176,9 +188,7 @@ export function publishedArticleToArticle(
     title: article.title,
     excerpt: article.excerpt || article.meta_description || "OpenGuideHub article",
     content: detail.body || "",
-    image: article.featured_image?.startsWith("/files/")
-      ? `${(process.env.NEXT_PUBLIC_ADMIN_API_URL || "https://pf.digigalaxy.cloud").replace(/\/+$/, "")}${article.featured_image}`
-      : article.featured_image || DEFAULT_ARTICLE_IMAGE,
+    image: article.featured_image ? cmsMediaUrl(article.featured_image) : DEFAULT_ARTICLE_IMAGE,
     category: article.content_type || "Guides",
     topic: article.category || "",
     language: article.language,

@@ -6,7 +6,7 @@ import { ArticlesExplorer } from "@/components/articles-explorer";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { CategoryLinkNetwork } from "@/components/category-link-network";
 import { categories, buildCategoryStats } from "@/lib/data";
-import { getPublicationBySubdomain, filterArticlesForPublication } from "@/lib/publications";
+import { getPublicationBySubdomain } from "@/lib/publications";
 import { publishedArticleToArticle, loadCategoryTree, flattenCategoryTree, categoryNodeToStats } from "@/lib/cms";
 import { fetchAllPublishedArticles } from "@/lib/galaxy-ops-api";
 
@@ -19,17 +19,12 @@ export const metadata: Metadata = {
 export default async function ArticlesPage() {
   const headerStore = await headers();
   const publication = getPublicationBySubdomain(headerStore.get("x-ogh-publication"));
-  const fallbackArticles = filterArticlesForPublication(publication);
   const [response, tree] = await Promise.all([
     fetchAllPublishedArticles({ publication: publication?.code }),
     loadCategoryTree({}),
   ]);
   const cmsArticles = (response || []).map(publishedArticleToArticle);
-  const cmsSlugs = new Set(cmsArticles.map((article) => article.slug));
-  const scopedArticles = [
-    ...cmsArticles,
-    ...fallbackArticles.filter((article) => !cmsSlugs.has(article.slug)),
-  ];
+  const scopedArticles = cmsArticles;
   const liveStats = flattenCategoryTree(tree).map((node) => categoryNodeToStats(node, node.article_count || 0));
   const categoryStats = liveStats.length ? liveStats : buildCategoryStats(categories, scopedArticles);
 

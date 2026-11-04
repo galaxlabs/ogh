@@ -109,13 +109,13 @@ function cacheSet<T>(key: string, data: T): void {
   }
 }
 
-async function getJson<T>(path: string): Promise<T | null> {
-  const cached = cacheGet<T>(path);
+async function getJson<T>(path: string, fresh = false): Promise<T | null> {
+  const cached = fresh ? null : cacheGet<T>(path);
   if (cached !== null) return cached;
 
   try {
     const res = await fetch(`${apiBase()}/api/method/gop.api.${path}`, {
-      next: { revalidate: 120 },
+      ...(fresh ? { cache: "no-store" as const } : { next: { revalidate: 120 } }),
       headers: {
         Accept: "application/json",
         "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300",
@@ -124,7 +124,7 @@ async function getJson<T>(path: string): Promise<T | null> {
     if (!res.ok) return null;
     const data = await res.json();
     const result = data?.message ?? null;
-    if (result !== null) cacheSet(path, result);
+    if (result !== null && !fresh) cacheSet(path, result);
     return result;
   } catch {
     return null;
@@ -147,8 +147,8 @@ export async function fetchPublishedArticles(opts: {
 }): Promise<{ items: PublishedArticle[]; total: number; page: number } | null> {
   const params = new URLSearchParams({
     page: String(opts.page || 1),
-    // Use a fresh cache key for the public response containing `noindex`.
-    page_size: "49",
+    // Fresh cache key after moving the static catalogue into the CMS.
+    page_size: "48",
   });
   if (opts.publication) params.set("publication", opts.publication);
   if (opts.language) params.set("language", opts.language);
@@ -175,7 +175,7 @@ export async function fetchArticleBySlug(
 ): Promise<PublishedArticleDetail | null> {
   const params = new URLSearchParams({ slug });
   if (publication) params.set("publication", publication);
-  return getJson<PublishedArticleDetail>(`get_by_slug?${params.toString()}`);
+  return getJson<PublishedArticleDetail>(`get_by_slug?${params.toString()}`, true);
 }
 
 export interface ContentCategoryNode {

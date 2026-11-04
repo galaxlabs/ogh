@@ -35,6 +35,7 @@ import { CategoryPicker, type CategoryOption } from "@/components/cms/category-p
 import { SocialPostPanel } from "@/components/cms/social-post-panel";
 import { slugify, suggestSeoTitle } from "@/lib/cms/markdown-tools";
 import { analyzeArticle, buildArticleTemplate } from "@/lib/cms/article-template";
+import { cmsMediaUrl } from "@/lib/cms/media-url";
 import type { CmsCapabilities, CmsProfile } from "@/lib/server/cms-policy";
 
 type SessionState = "loading" | "guest" | "authenticated";
@@ -1247,7 +1248,7 @@ export function ContentStudio() {
                 {article.featured_image && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={article.featured_image}
+                    src={cmsMediaUrl(article.featured_image)}
                     alt="Featured preview"
                     className="mt-2 h-28 w-full rounded-lg border border-black/10 object-cover dark:border-white/10"
                   />

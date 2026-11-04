@@ -5,6 +5,7 @@ import { Copy, Image as ImageIcon, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { cmsMediaUrl } from "@/lib/cms/media-url";
 
 export interface SocialPostSource {
   title?: string;
@@ -88,7 +89,7 @@ export function SocialPostPanel({ article }: { article: SocialPostSource }) {
           <Button
             size="xs"
             variant="outline"
-            onClick={() => copy(article.featured_image || "", "Image URL copied.")}
+            onClick={() => copy(cmsMediaUrl(article.featured_image || ""), "Image URL copied.")}
           >
             <ImageIcon /> Copy image URL
           </Button>
@@ -98,7 +99,7 @@ export function SocialPostPanel({ article }: { article: SocialPostSource }) {
       {article.featured_image ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={article.featured_image}
+          src={cmsMediaUrl(article.featured_image)}
           alt="Social preview"
           className="h-28 w-full rounded-lg border border-black/10 object-cover dark:border-white/10"
         />

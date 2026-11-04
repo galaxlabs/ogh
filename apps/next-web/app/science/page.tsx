@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { SiteShell } from "@/components/site-shell";
 import { TopicExplorer, TopicPageShell } from "@/components/topic-explorer";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { articles } from "@/lib/data";
+import { loadArticlesByTopics } from "@/lib/cms";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Science",
@@ -10,18 +12,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/science" },
 };
 
-export default function SciencePage() {
-  const scienceArticles = articles.filter((article) =>
-    [
-      "Physics",
-      "Chemistry",
-      "Biology",
-      "Mathematics",
-      "Earth Science",
-      "Space & Astronomy",
-      "Environmental Science",
-    ].includes(article.category)
-  );
+export default async function SciencePage() {
+  const scienceArticles = await loadArticlesByTopics(["science"]);
 
   return (
     <SiteShell>

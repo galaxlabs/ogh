@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { SiteShell } from "@/components/site-shell";
 import { ArticleDetailClient } from "@/components/article-detail-client";
-import { articles, categories, buildCategoryStats, type Article } from "@/lib/data";
+import { categories, buildCategoryStats, type Article } from "@/lib/data";
 import { publishedArticleToArticle } from "@/lib/cms";
 import { fetchArticleBySlug, fetchPublishedArticles } from "@/lib/galaxy-ops-api";
 import { getPublicationBySubdomain } from "@/lib/publications";
@@ -67,9 +67,7 @@ async function loadArticle(slug: string) {
   const headerStore = await headers();
   const publication = getPublicationBySubdomain(headerStore.get("x-ogh-publication"));
   const cmsArticle = await fetchArticleBySlug(slug, publication?.code);
-  return cmsArticle
-    ? publishedArticleToArticle(cmsArticle)
-    : articles.find((article) => article.slug === slug);
+  return cmsArticle ? publishedArticleToArticle(cmsArticle) : null;
 }
 
 function buildSeoKeywords(article: Article) {
@@ -145,19 +143,13 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
   const headerStore = await headers();
   const publication = getPublicationBySubdomain(headerStore.get("x-ogh-publication"));
   const cmsArticle = await fetchArticleBySlug(slug, publication?.code);
-  const article = cmsArticle
-    ? publishedArticleToArticle(cmsArticle)
-    : articles.find((item) => item.slug === slug);
+  const article = cmsArticle ? publishedArticleToArticle(cmsArticle) : null;
 
   if (!article) notFound();
 
   const response = await fetchPublishedArticles({ publication: publication?.code });
   const cmsArticles = (response?.items || []).map(publishedArticleToArticle);
-  const cmsSlugs = new Set(cmsArticles.map((item) => item.slug));
-  const allArticles = [
-    ...cmsArticles,
-    ...articles.filter((item) => !cmsSlugs.has(item.slug)),
-  ];
+  const allArticles = cmsArticles;
   const categoryStats = buildCategoryStats(categories, allArticles);
 
   return (

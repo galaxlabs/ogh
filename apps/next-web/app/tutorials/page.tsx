@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { SiteShell } from "@/components/site-shell";
 import { TopicExplorer, TopicPageShell } from "@/components/topic-explorer";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { articles } from "@/lib/data";
+import { fetchAllPublishedArticles } from "@/lib/galaxy-ops-api";
+import { publishedArticleToArticle } from "@/lib/cms";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Tutorials",
@@ -10,13 +13,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/tutorials" },
 };
 
-export default function TutorialsPage() {
-  const tutorialArticles = articles.filter(
-    (article) =>
-      article.category.includes("Tutorial") ||
-      article.category === "Programming" ||
-      article.category === "How-To Guides"
-  );
+export default async function TutorialsPage() {
+  const tutorialArticles = (await fetchAllPublishedArticles() || [])
+    .filter((article) => article.content_type === "Tutorial" || article.category === "programming" || article.category === "how-to-guides")
+    .map(publishedArticleToArticle);
 
   return (
     <SiteShell>

@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { SiteShell } from "@/components/site-shell";
 import { TopicExplorer, TopicPageShell } from "@/components/topic-explorer";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { articles } from "@/lib/data";
+import { fetchAllPublishedArticles } from "@/lib/galaxy-ops-api";
+import { publishedArticleToArticle } from "@/lib/cms";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Reviews",
@@ -10,10 +13,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/reviews" },
 };
 
-export default function ReviewsPage() {
-  const reviewArticles = articles.filter((article) =>
-    article.category.includes("Review")
-  );
+export default async function ReviewsPage() {
+  const reviewArticles = (await fetchAllPublishedArticles() || [])
+    .filter((article) => article.content_type === "Review" || article.category === "repo-reviews")
+    .map(publishedArticleToArticle);
 
   return (
     <SiteShell>

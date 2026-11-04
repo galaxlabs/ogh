@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { SiteShell } from "@/components/site-shell";
 import { TopicExplorer, TopicPageShell } from "@/components/topic-explorer";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { articles } from "@/lib/data";
+import { loadArticlesByTopics } from "@/lib/cms";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Open Source",
@@ -10,10 +12,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/open-source" },
 };
 
-export default function OpenSourcePage() {
-  const openSourceArticles = articles.filter(
-    (article) => article.category === "Open Source" || article.category === "Repo Reviews"
-  );
+export default async function OpenSourcePage() {
+  const openSourceArticles = await loadArticlesByTopics(["open-source", "repo-reviews"]);
 
   return (
     <SiteShell>

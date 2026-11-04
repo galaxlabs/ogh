@@ -5,6 +5,7 @@ import { Image as ImageIcon, LoaderCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cmsMediaUrl } from "@/lib/cms/media-url";
 
 interface MediaFile {
   name: string;
@@ -136,7 +137,7 @@ export function MediaLibrary({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={file.file_url}
+              src={cmsMediaUrl(file.file_url)}
               alt={file.file_name}
               className="h-24 w-full bg-muted object-cover"
             />
